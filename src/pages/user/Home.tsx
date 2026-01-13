@@ -1,0 +1,85 @@
+import React from 'react';
+import Navbar from '../../components/user/Navbar';
+import icon from '../../images/icon.png';
+import Menu_produk from './Menu_produk';
+import Footer from '../../components/user/Footer';
+
+const Home = () => {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 relative overflow-visible">
+      {/* Decorative colored blobs */}
+      <div className="absolute top-0 left-0 w-64 h-64 md:w-96 md:h-96 bg-gradient-to-br from-pink-300 to-purple-400 rounded-full filter blur-3xl opacity-40 animate-pulse"></div>
+      <div className="absolute top-40 left-10 md:left-20 w-48 h-48 md:w-72 md:h-72 bg-gradient-to-br from-blue-300 to-cyan-300 rounded-full filter blur-3xl opacity-30"></div>
+      <div className="absolute bottom-0 right-0 w-80 h-80 md:w-[500px] md:h-[500px] bg-gradient-to-br from-purple-300 via-pink-300 to-blue-200 rounded-full filter blur-3xl opacity-50"></div>
+      <div className="absolute bottom-20 left-20 md:left-40 w-48 h-48 md:w-64 md:h-64 bg-gradient-to-br from-pink-200 to-purple-200 rounded-full filter blur-2xl opacity-40 animate-pulse"></div>
+
+      <Navbar />
+
+<section
+  className="
+    flex flex-col md:flex-row items-center
+    justify-center md:justify-between
+    px-4 md:px-16 py-8 md:py-16
+    relative z-10 max-w-7xl mx-auto gap-8 md:gap-16
+    h-screen md:h-auto
+  "
+>
+  {/* LEFT CONTENT */}
+  <div className="max-w-xl text-center md:text-left">
+    <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-gray-900 leading-tight mb-4 md:mb-6">
+      Selamat Datang
+    </h1>
+
+    <p className="text-base sm:text-lg md:text-lg font-medium text-gray-800 mb-2 md:mb-4">
+      Temukan Yang kamu cari disini
+    </p>
+
+    <a href="#produk" className="px-6 sm:px-8 md:px-12 py-2 sm:py-3 md:py-4 bg-black text-white rounded-xl font-semibold hover:bg-gray-800 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105">
+      Cari Produk!
+    </a>
+  </div>
+        {/* RIGHT IMAGE - Only for desktop */}
+        <div className="hidden md:block relative">            
+            {/* Phone mockup container */}
+            <div className="relative w-80 h-[600px]">
+              <div className="relative h-full transform hover:scale-105 transition-all duration-700 ease-out animate-float">
+                <img 
+                  src={icon} 
+                  alt="SmartAcademy App"
+                  className="w-full h-full object-contain drop-shadow-2xl"
+                  style={{
+                    filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.3))'
+                  }}
+                />
+              </div>
+            </div>
+          
+          {/* Floating decorative elements */}
+          <div className="absolute -top-6 -left-6 w-24 h-24 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full blur-2xl opacity-50 animate-pulse"></div>
+          <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full blur-2xl opacity-50 animate-bounce"></div>
+        </div>
+      </section>
+
+      <Menu_produk />
+      <Footer />
+
+
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-15px) rotate(1deg);
+          }
+        }
+        
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default Home;
