@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShoppingOutlined } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
 
 interface Props {
   title: string;
@@ -31,16 +32,14 @@ const ProductCard = ({ title, category, price, image }: Props) => {
         <p className="text-sm text-gray-600">{category}</p>
         <p className="font-semibold text-gray-800 mt-1">{price}</p>
 
-    <button
-    className="mt-4 w-full py-2 text-white rounded-lg transition"
-    style={{
-        backgroundColor: "#7E89B9",
-    }}
-    onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#6E79A9")}
-    onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#7E89B9")}
-    >
-    Lihat Detail
-    </button>
+        <Link to="/produk/detail">
+          <button
+            className="mt-4 w-full py-2 text-white rounded-lg transition"
+            style={{ backgroundColor: "#7E89B9" }}
+          >
+            Lihat Detail
+          </button>
+        </Link>
       </div>
     </div>
   );
