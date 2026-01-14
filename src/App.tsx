@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
 import Home from "./pages/user/Home";
 import AdminLogin from "./pages/admin/Login";
 import AdminRegister from "./pages/admin/Register";
+import AdminDashboard from "./pages/admin/Dashboard";
 
 function App() {
   return (
@@ -11,7 +11,8 @@ function App() {
         {/* USER */}
         <Route path="/" element={<Home />} />
 
-        {/* ADMIN LOGIN VIA URL */}
+        {/* ADMIN */}
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/register" element={<AdminRegister />} />
       </Routes>
