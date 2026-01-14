@@ -1,8 +1,12 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import Home from "./pages/user/Home";
+// ADMIN PAGES
 import AdminLogin from "./pages/admin/Login";
 import AdminRegister from "./pages/admin/Register";
+
+// USER PAGES
+import Home from "./pages/user/Home";
+import DetailProduk from "./pages/user/detailProduk";
 
 function App() {
   return (
@@ -10,6 +14,7 @@ function App() {
       <Routes>
         {/* USER */}
         <Route path="/" element={<Home />} />
+        <Route path="/produk/detail" element={<DetailProduk />} />
 
         {/* ADMIN LOGIN VIA URL */}
         <Route path="/admin/login" element={<AdminLogin />} />
