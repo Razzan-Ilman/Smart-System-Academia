@@ -1,15 +1,22 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './index.css'
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import Home from "./pages/user/Home"
+import Home from "./pages/user/Home";
+import AdminLogin from "./pages/admin/Login";
+import AdminRegister from "./pages/admin/Register";
 
 function App() {
-  return <Home />
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* USER */}
+        <Route path="/" element={<Home />} />
+
+        {/* ADMIN LOGIN VIA URL */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/register" element={<AdminRegister />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
-
-
-
+export default App;
