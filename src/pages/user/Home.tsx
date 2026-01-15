@@ -1,4 +1,3 @@
-import React from 'react';
 import Navbar from '../../components/user/Navbar';
 import icon from '../../images/icon.png';
 import Menu_produk from './Menu_produk';
@@ -64,7 +63,7 @@ const Home = () => {
       <Footer />
 
 
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% {
             transform: translateY(0px) rotate(0deg);
@@ -73,7 +72,7 @@ const Home = () => {
             transform: translateY(-15px) rotate(1deg);
           }
         }
-        
+
         .animate-float {
           animation: float 4s ease-in-out infinite;
         }

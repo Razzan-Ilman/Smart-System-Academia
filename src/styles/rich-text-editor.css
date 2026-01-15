@@ -1,0 +1,91 @@
+/* Rich Text Editor Custom Styles */
+.rich-text-editor-custom .toolbar-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s;
+    color: #374151;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.rich-text-editor-custom .toolbar-btn:hover {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.rich-text-editor-custom .toolbar-btn:active {
+    background: #bfdbfe;
+}
+
+.rich-text-editor-custom .editor-content:empty:before {
+    content: attr(data-placeholder);
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+.rich-text-editor-custom .editor-content:focus {
+    outline: none;
+}
+
+/* Styling for content inside editor */
+.rich-text-editor-custom .editor-content b,
+.rich-text-editor-custom .editor-content strong {
+    font-weight: bold;
+}
+
+.rich-text-editor-custom .editor-content i,
+.rich-text-editor-custom .editor-content em {
+    font-style: italic;
+}
+
+.rich-text-editor-custom .editor-content u {
+    text-decoration: underline;
+}
+
+.rich-text-editor-custom .editor-content strike,
+.rich-text-editor-custom .editor-content s {
+    text-decoration: line-through;
+}
+
+.rich-text-editor-custom .editor-content ul {
+    list-style-type: disc;
+    margin-left: 20px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.rich-text-editor-custom .editor-content ol {
+    list-style-type: decimal;
+    margin-left: 20px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.rich-text-editor-custom .editor-content li {
+    margin-bottom: 4px;
+}
+
+.rich-text-editor-custom .editor-content a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.rich-text-editor-custom .editor-content img {
+    max-width: 100%;
+    height: auto;
+    margin: 8px 0;
+}
+
+.rich-text-editor-custom .editor-content pre {
+    background: #f3f4f6;
+    padding: 12px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: 'Courier New', monospace;
+    margin: 8px 0;
+}

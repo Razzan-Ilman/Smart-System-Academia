@@ -1,4 +1,3 @@
-import React from 'react';
 import { WhatsAppOutlined, MailOutlined } from '@ant-design/icons';
 import logo from '../../images/logo.png';
 

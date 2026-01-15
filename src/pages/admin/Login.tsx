@@ -155,7 +155,7 @@ const AdminLogin: React.FC = () => {
     />
   </div>
 </div>
-      <style jsx>{`
+      <style>{`
         @keyframes gradient {
           0%, 100% {
             background-position: 0% 50%;

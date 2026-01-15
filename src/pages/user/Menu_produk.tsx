@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import SearchBar from '../../components/user/SearchBar';
 import ProductCard from '../../components/user/ProductCard'; // pastikan ini sudah ada
 

@@ -1,0 +1,99 @@
+/* Custom styles for React Quill Editor */
+.rich-text-editor .ql-container {
+    min-height: 200px;
+    font-size: 14px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+.rich-text-editor .ql-toolbar {
+    background: #e8f0fe;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border: 1px solid #d1d5db;
+    padding: 12px;
+}
+
+.rich-text-editor .ql-editor {
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.rich-text-editor .ql-editor.ql-blank::before {
+    color: #9ca3af;
+    font-style: normal;
+}
+
+/* Toolbar button styling */
+.rich-text-editor .ql-toolbar button {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.rich-text-editor .ql-toolbar button:hover {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.rich-text-editor .ql-toolbar button.ql-active {
+    background: rgba(59, 130, 246, 0.2);
+    color: #2563eb;
+}
+
+.rich-text-editor .ql-toolbar .ql-stroke {
+    stroke: #4b5563;
+}
+
+.rich-text-editor .ql-toolbar .ql-fill {
+    fill: #4b5563;
+}
+
+.rich-text-editor .ql-toolbar button:hover .ql-stroke {
+    stroke: #2563eb;
+}
+
+.rich-text-editor .ql-toolbar button:hover .ql-fill {
+    fill: #2563eb;
+}
+
+.rich-text-editor .ql-toolbar button.ql-active .ql-stroke {
+    stroke: #2563eb;
+}
+
+.rich-text-editor .ql-toolbar button.ql-active .ql-fill {
+    fill: #2563eb;
+}
+
+/* Dropdown styling */
+.rich-text-editor .ql-toolbar select {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 4px 8px;
+    background: white;
+}
+
+.rich-text-editor .ql-toolbar select:hover {
+    border-color: #2563eb;
+}
+
+/* Container border */
+.rich-text-editor .ql-container {
+    border: 1px solid #d1d5db;
+    border-top: none;
+    background: white;
+}
+
+/* Focus state */
+.rich-text-editor .ql-container.ql-snow {
+    border-color: #d1d5db;
+}
+
+.rich-text-editor:focus-within .ql-toolbar {
+    border-color: #3b82f6;
+}
+
+.rich-text-editor:focus-within .ql-container {
+    border-color: #3b82f6;
+}
