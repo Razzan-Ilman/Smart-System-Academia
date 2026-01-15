@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 type AddOn = {
   id: number;
@@ -7,6 +8,7 @@ type AddOn = {
 };
 
 const DetailProduk: React.FC = () => {
+  const navigate = useNavigate();
   const basePrice = 50000;
 
   const images = [
@@ -48,7 +50,7 @@ const DetailProduk: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-6">
       <h1 className="text-2xl font-semibold text-center mb-6">
-        Produk Kami
+        Detail Produk Kami
       </h1>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -159,9 +161,20 @@ const DetailProduk: React.FC = () => {
               </span>
             </div>
 
-            <button className="w-full bg-[#7E89B9] hover:bg-[#6E79A9] text-white py-3 rounded-xl transition">
-              Checkout
-            </button>
+          <button
+            className="w-full bg-[#7E89B9] hover:bg-[#6E79A9] text-white py-3 rounded-xl transition"
+            onClick={() =>
+              navigate("/payment", {
+                state: {
+                  totalPrice,
+                  selectedAddOns: addOns.filter(a => selectedAddOns.includes(a.id)),
+                  basePrice,
+                },
+              })
+            }
+          >
+            Checkout
+          </button>
           </div>
         </div>
       </div>

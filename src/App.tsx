@@ -16,6 +16,7 @@ import AdminListTransaksi from "./pages/admin/ListTransaksi";
 // USER PAGES
 import Home from "./pages/user/Home";
 import DetailProduk from "./pages/user/detailProduk";
+import Payment from "./pages/user/Payment";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
         {/* USER */}
         <Route path="/" element={<Home />} />
         <Route path="/produk/detail" element={<DetailProduk />} />
+        <Route path="/payment" element={<Payment />} />
 
         {/* ADMIN */}
         <Route path="/admin/login" element={<AdminLogin />} />

@@ -10,8 +10,9 @@ const Navbar = () => {
   const closeDrawer = () => setDrawerVisible(false);
 
   const menuItems = [
-    { key: '1', label: 'Riwayat Pembelian' },
-    { key: '2', label: 'Produk' },
+    { key: '1', label: 'Produk' },
+    { key: '2', label: 'About' },
+    { key: '3', label: 'Contact' },
   ];
 
   return (
@@ -24,31 +25,22 @@ const Navbar = () => {
           className="w-[96px] h-auto object-contain drop-shadow-xl"
         />
 
-        {/* Desktop Menu + Sign In */}
+        {/* Desktop Menu */}
         <div className="hidden md:flex items-center gap-8">
           <ul className="flex gap-8 text-gray-800 font-semibold">
             {menuItems.map(item => (
-              <li key={item.key} className="hover:text-blue-600 cursor-pointer transition text-2xl">
+              <li
+                key={item.key}
+                className="hover:text-blue-600 cursor-pointer transition text-2xl"
+              >
                 {item.label}
               </li>
             ))}
           </ul>
-          <Button
-            type="primary"
-            className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-1"
-          >
-            Sign In
-          </Button>
         </div>
 
-        {/* Mobile Hamburger + Sign In */}
+        {/* Mobile Hamburger */}
         <div className="flex md:hidden items-center gap-4">
-          <Button
-            type="primary"
-            className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-1"
-          >
-            Sign In
-          </Button>
           <Button
             type="text"
             icon={<MenuOutlined className="text-2xl text-gray-800" />}
@@ -60,7 +52,7 @@ const Navbar = () => {
       {/* Drawer for Mobile Menu */}
       <Drawer
         title="Menu"
-        placement="right" // <-- dari kanan sekarang
+        placement="right"
         onClose={closeDrawer}
         open={drawerVisible}
         bodyStyle={{ padding: 0 }}
@@ -82,3 +74,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
