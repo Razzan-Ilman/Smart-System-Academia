@@ -23,11 +23,11 @@ interface Product {
 }
 
 const DEFAULT_PRODUCTS: Product[] = [
-    { id: 1, image: Produk1, title: "Produk Unggulan A", price: "50k", priceValue: 50000, date: "2024-01-10" },
-    { id: 2, image: Produk2, title: "Produk Premium B", price: "75k", priceValue: 75000, date: "2024-01-12" },
-    { id: 3, image: Produk1, title: "Paket Belajar C", price: "120k", priceValue: 120000, date: "2024-01-05" },
-    { id: 4, image: Produk2, title: "Kursus Intensif D", price: "200k", priceValue: 200000, date: "2024-01-15" },
-    { id: 5, image: Produk1, title: "E-Book Eksklusif E", price: "35k", priceValue: 35000, date: "2024-01-08" },
+    { id: 1, image: Produk1, title: "Produk Unggulan A", price: "Rp 50.000", priceValue: 50000, date: "2024-01-10" },
+    { id: 2, image: Produk2, title: "Produk Premium B", price: "Rp 75.000", priceValue: 75000, date: "2024-01-12" },
+    { id: 3, image: Produk1, title: "Paket Belajar C", price: "Rp 120.000", priceValue: 120000, date: "2024-01-05" },
+    { id: 4, image: Produk2, title: "Kursus Intensif D", price: "Rp 200.000", priceValue: 200000, date: "2024-01-15" },
+    { id: 5, image: Produk1, title: "E-Book Eksklusif E", price: "Rp 35.000", priceValue: 35000, date: "2024-01-08" },
 ];
 
 export default function AdminProduk() {

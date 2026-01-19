@@ -7,11 +7,12 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import RichTextEditor from "../../components/RichTextEditor";
+import AddOnModal from "../../components/AddOnModal";
 import '../../styles/rich-text-editor.css';
 
 // Simple helper to format price
 const formatPrice = (value: number) => {
-    return value >= 1000 ? `${value / 1000}k` : `${value}`;
+    return `Rp ${value.toLocaleString('id-ID')}`;
 };
 
 export default function AdminTambahProduk() {
@@ -27,6 +28,12 @@ export default function AdminTambahProduk() {
     const [category, setCategory] = useState("");
     const [limit, setLimit] = useState("");
     const [images, setImages] = useState<string[]>([]); // Store base64 images
+    const [platformError, setPlatformError] = useState("");
+
+    // Add-ons State
+    const [addOns, setAddOns] = useState<Array<{ id: number, title: string, price: string }>>([]);
+    const [isAddOnModalOpen, setIsAddOnModalOpen] = useState(false);
+    const [editingAddOn, setEditingAddOn] = useState<{ id: number, title: string, price: string } | null>(null);
 
     // Handle image upload
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,6 +75,77 @@ export default function AdminTambahProduk() {
     // Trigger file input
     const triggerFileInput = () => {
         fileInputRef.current?.click();
+    };
+
+    // Validate platform link based on category
+    const validatePlatformLink = (link: string, cat: string): boolean => {
+        if (!link) return true; // Empty is allowed, will be checked on save
+
+        if (cat === "Course") {
+            // Check if link contains Google Drive patterns
+            const isValidGdrive = link.includes("drive.google.com") ||
+                link.includes("docs.google.com") ||
+                link.toLowerCase().includes("gdrive");
+            if (!isValidGdrive) {
+                setPlatformError("Link harus berupa Google Drive untuk kategori Course");
+                return false;
+            }
+        } else if (cat === "Kelas") {
+            // Check if link contains WhatsApp patterns
+            const isValidWA = link.includes("wa.me") ||
+                link.includes("whatsapp.com") ||
+                link.includes("chat.whatsapp");
+            if (!isValidWA) {
+                setPlatformError("Link harus berupa WhatsApp untuk kategori Kelas");
+                return false;
+            }
+        }
+
+        setPlatformError("");
+        return true;
+    };
+
+    // Handle platform link change with validation
+    const handlePlatformLinkChange = (value: string) => {
+        setPlatformLink(value);
+        if (category) {
+            validatePlatformLink(value, category);
+        }
+    };
+
+    // Handle Add-on functions
+    const handleAddOnSave = (title: string, price: string) => {
+        if (editingAddOn) {
+            // Update existing add-on
+            setAddOns(addOns.map(addon =>
+                addon.id === editingAddOn.id
+                    ? { ...addon, title, price }
+                    : addon
+            ));
+            setEditingAddOn(null);
+        } else {
+            // Add new add-on
+            const newAddOn = {
+                id: Date.now(),
+                title,
+                price
+            };
+            setAddOns([...addOns, newAddOn]);
+        }
+    };
+
+    const handleEditAddOn = (addon: { id: number, title: string, price: string }) => {
+        setEditingAddOn(addon);
+        setIsAddOnModalOpen(true);
+    };
+
+    const handleDeleteAddOn = (id: number) => {
+        setAddOns(addOns.filter(addon => addon.id !== id));
+    };
+
+    const handleCloseModal = () => {
+        setIsAddOnModalOpen(false);
+        setEditingAddOn(null);
     };
 
     const handleSave = () => {
@@ -172,15 +250,45 @@ export default function AdminTambahProduk() {
                     </div>
 
                     <div>
+                        <label className="block text-gray-500 font-bold mb-2">Kategori</label>
+                        <select
+                            value={category}
+                            onChange={(e) => setCategory(e.target.value)}
+                            className="w-full px-4 py-4 bg-white border-2 border-blue-400 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
+                        >
+                            <option value="">Pilih Kategori</option>
+                            <option value="Course">Course</option>
+                            <option value="Kelas">Kelas</option>
+                        </select>
+                    </div>
+
+                    <div>
                         <label className="block text-gray-500 font-bold mb-2">Platform</label>
-                        <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 flex items-center gap-3">
+                        <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 flex flex-col gap-2">
                             <input
                                 type="text"
                                 value={platformLink}
-                                onChange={(e) => setPlatformLink(e.target.value)}
-                                placeholder="Link Gdrive"
-                                className="flex-1 px-4 py-3 bg-white rounded-full border border-gray-200 shadow-sm outline-none focus:ring-2 focus:ring-blue-400"
+                                onChange={(e) => handlePlatformLinkChange(e.target.value)}
+                                disabled={!category}
+                                placeholder={
+                                    category === "Course"
+                                        ? "Link Gdrive"
+                                        : category === "Kelas"
+                                            ? "Link WhatsApp"
+                                            : "Pilih kategori terlebih dahulu"
+                                }
+                                className={`flex-1 px-4 py-3 bg-white rounded-full border shadow-sm outline-none focus:ring-2 ${!category
+                                    ? 'border-gray-200 cursor-not-allowed bg-gray-100'
+                                    : platformError
+                                        ? 'border-red-400 focus:ring-red-400'
+                                        : 'border-gray-200 focus:ring-blue-400'
+                                    }`}
                             />
+                            {platformError && (
+                                <p className="text-red-500 text-sm font-semibold px-2">
+                                    ⚠️ {platformError}
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -233,36 +341,46 @@ export default function AdminTambahProduk() {
                 <div className="md:col-span-6 bg-white rounded-2xl shadow-sm border border-gray-200 p-8 flex flex-col">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-xl font-bold text-gray-500">Add-ons</h2>
-                        <button className="text-[#2ecc71] font-bold flex items-center gap-1 hover:opacity-80 transition">
+                        <button
+                            type="button"
+                            onClick={() => setIsAddOnModalOpen(true)}
+                            className="text-[#2ecc71] font-bold flex items-center gap-1 hover:opacity-80 transition"
+                        >
                             <PlusOutlined /> Tambah
                         </button>
                     </div>
 
-                    <div className="flex-1">
-                        <div className="flex items-center justify-between p-3 border border-gray-200 rounded-xl mb-3 shadow-sm">
-                            <div className="flex items-center gap-3">
-                                <DeleteOutlined className="text-gray-400 hover:text-red-500 cursor-pointer" />
-                                <span className="font-bold text-gray-700">Judul Add-ons</span>
-                            </div>
-                            <EditOutlined className="text-gray-400 hover:text-blue-500 cursor-pointer" />
-                        </div>
-                        {/* Placeholder for empty space below if needed */}
+                    <div className="flex-1 space-y-3">
+                        {addOns.length === 0 ? (
+                            <p className="text-gray-400 text-center py-8">Belum ada add-ons</p>
+                        ) : (
+                            addOns.map((addon) => (
+                                <div key={addon.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-xl shadow-sm">
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteAddOn(addon.id)}
+                                            className="text-gray-400 hover:text-red-500 transition"
+                                        >
+                                            <DeleteOutlined />
+                                        </button>
+                                        <div>
+                                            <span className="font-bold text-gray-700 block">{addon.title}</span>
+                                            <span className="text-sm text-gray-500">Rp {parseInt(addon.price).toLocaleString('id-ID')}</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleEditAddOn(addon)}
+                                        className="text-gray-400 hover:text-blue-500 transition"
+                                    >
+                                        <EditOutlined />
+                                    </button>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
-            </div>
-
-            {/* Kategori Section */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-                <h2 className="text-xl font-bold text-gray-500 mb-6">Kategori</h2>
-                <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
-                >
-                    <option value="">Pilih Kategori</option>
-                    <option value="Course">Course</option>
-                    <option value="Kelas">Kelas</option>
-                </select>
             </div>
 
             {/* Action Buttons */}
@@ -280,6 +398,14 @@ export default function AdminTambahProduk() {
                     Tambah
                 </button>
             </div>
+
+            {/* Add-On Modal */}
+            <AddOnModal
+                isOpen={isAddOnModalOpen}
+                onClose={handleCloseModal}
+                onSave={handleAddOnSave}
+                editData={editingAddOn}
+            />
         </div>
     );
 }

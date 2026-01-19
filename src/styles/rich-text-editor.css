@@ -28,6 +28,13 @@
     pointer-events: none;
 }
 
+.rich-text-editor-custom .editor-content {
+    text-align: left;
+    direction: ltr;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
 .rich-text-editor-custom .editor-content:focus {
     outline: none;
 }

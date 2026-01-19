@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import {
     BoldOutlined,
     ItalicOutlined,
@@ -9,12 +9,7 @@ import {
     AlignLeftOutlined,
     AlignCenterOutlined,
     AlignRightOutlined,
-    LinkOutlined,
-    PictureOutlined,
-    CodeOutlined,
-    BgColorsOutlined,
-    FullscreenOutlined,
-    FullscreenExitOutlined
+    BgColorsOutlined
 } from '@ant-design/icons';
 
 interface RichTextEditorProps {
@@ -26,11 +21,18 @@ interface RichTextEditorProps {
 export default function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
     const editorRef = useRef<HTMLDivElement>(null);
     const [fontSize, setFontSize] = useState('16');
-    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Set initial value only once when component mounts or when value changes from empty to non-empty
+    useEffect(() => {
+        if (editorRef.current && value && editorRef.current.innerHTML !== value) {
+            editorRef.current.innerHTML = value;
+        }
+    }, [value]);
 
     const executeCommand = (command: string, value?: string) => {
+        editorRef.current?.focus();
         document.execCommand(command, false, value);
-        updateContent();
+        setTimeout(() => updateContent(), 10);
     };
 
     const updateContent = () => {
@@ -39,31 +41,37 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         }
     };
 
-    const insertLink = () => {
-        const url = prompt('Masukkan URL:');
-        if (url) {
-            executeCommand('createLink', url);
-        }
-    };
-
-    const insertImage = () => {
-        const url = prompt('Masukkan URL gambar:');
-        if (url) {
-            executeCommand('insertImage', url);
-        }
-    };
-
     const changeFontSize = (size: string) => {
         setFontSize(size);
-        executeCommand('fontSize', '3');
-        // Apply custom size via style
+
         const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            const span = document.createElement('span');
-            span.style.fontSize = size + 'px';
-            range.surroundContents(span);
-        }
+        if (!selection || selection.rangeCount === 0) return;
+
+        const range = selection.getRangeAt(0);
+        if (range.collapsed) return; // Do nothing if no text selected
+
+        editorRef.current?.focus();
+
+        // Get selected text
+        const selectedText = range.toString();
+        if (!selectedText) return;
+
+        // Create span with font size
+        const span = document.createElement('span');
+        span.style.fontSize = size + 'px';
+        span.textContent = selectedText;
+
+        // Replace selection with styled span
+        range.deleteContents();
+        range.insertNode(span);
+
+        // Move cursor after the span
+        range.setStartAfter(span);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        updateContent();
     };
 
     const changeHighlightColor = (color: string) => {
@@ -94,7 +102,10 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
                 {/* Bold */}
                 <button
                     type="button"
-                    onClick={() => executeCommand('bold')}
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        executeCommand('bold');
+                    }}
                     className="toolbar-btn"
                     title="Bold (Ctrl+B)"
                 >
@@ -104,7 +115,10 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
                 {/* Italic */}
                 <button
                     type="button"
-                    onClick={() => executeCommand('italic')}
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        executeCommand('italic');
+                    }}
                     className="toolbar-btn"
                     title="Italic (Ctrl+I)"
                 >
@@ -114,7 +128,10 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
                 {/* Underline */}
                 <button
                     type="button"
-                    onClick={() => executeCommand('underline')}
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        executeCommand('underline');
+                    }}
                     className="toolbar-btn"
                     title="Underline (Ctrl+U)"
                 >
@@ -124,7 +141,10 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
                 {/* Strikethrough */}
                 <button
                     type="button"
-                    onClick={() => executeCommand('strikeThrough')}
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        executeCommand('strikeThrough');
+                    }}
                     className="toolbar-btn"
                     title="Strikethrough"
                 >
@@ -156,7 +176,10 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
                 {/* Bullet List */}
                 <button
                     type="button"
-                    onClick={() => executeCommand('insertUnorderedList')}
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        executeCommand('insertUnorderedList');
+                    }}
                     className="toolbar-btn"
                     title="Bullet List"
                 >
@@ -166,7 +189,10 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
                 {/* Numbered List */}
                 <button
                     type="button"
-                    onClick={() => executeCommand('insertOrderedList')}
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        executeCommand('insertOrderedList');
+                    }}
                     className="toolbar-btn"
                     title="Numbered List"
                 >
@@ -178,7 +204,10 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
                 {/* Align Left */}
                 <button
                     type="button"
-                    onClick={() => executeCommand('justifyLeft')}
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        executeCommand('justifyLeft');
+                    }}
                     className="toolbar-btn"
                     title="Align Left"
                 >
@@ -188,7 +217,10 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
                 {/* Align Center */}
                 <button
                     type="button"
-                    onClick={() => executeCommand('justifyCenter')}
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        executeCommand('justifyCenter');
+                    }}
                     className="toolbar-btn"
                     title="Align Center"
                 >
@@ -198,55 +230,14 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
                 {/* Align Right */}
                 <button
                     type="button"
-                    onClick={() => executeCommand('justifyRight')}
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        executeCommand('justifyRight');
+                    }}
                     className="toolbar-btn"
                     title="Align Right"
                 >
                     <AlignRightOutlined />
-                </button>
-
-                <div className="w-px h-6 bg-gray-300" />
-
-                {/* Insert Link */}
-                <button
-                    type="button"
-                    onClick={insertLink}
-                    className="toolbar-btn"
-                    title="Insert Link"
-                >
-                    <LinkOutlined />
-                </button>
-
-                {/* Insert Image */}
-                <button
-                    type="button"
-                    onClick={insertImage}
-                    className="toolbar-btn"
-                    title="Insert Image"
-                >
-                    <PictureOutlined />
-                </button>
-
-                {/* Code Block */}
-                <button
-                    type="button"
-                    onClick={() => executeCommand('formatBlock', 'pre')}
-                    className="toolbar-btn"
-                    title="Code Block"
-                >
-                    <CodeOutlined />
-                </button>
-
-                <div className="w-px h-6 bg-gray-300" />
-
-                {/* Fullscreen Toggle */}
-                <button
-                    type="button"
-                    onClick={() => setIsFullscreen(!isFullscreen)}
-                    className="toolbar-btn"
-                    title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-                >
-                    {isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
                 </button>
             </div>
 
@@ -256,10 +247,9 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
                 contentEditable
                 onInput={updateContent}
                 onBlur={updateContent}
-                dangerouslySetInnerHTML={{ __html: value }}
-                className={`editor-content overflow-y-auto p-4 outline-none focus:ring-2 focus:ring-blue-400 bg-white ${isFullscreen ? 'fixed inset-0 z-50 min-h-screen max-h-screen' : 'min-h-[200px] max-h-[400px]'
-                    }`}
+                className="editor-content overflow-y-auto p-4 outline-none focus:ring-2 focus:ring-blue-400 bg-white min-h-[200px] max-h-[400px]"
                 data-placeholder={placeholder}
+                suppressContentEditableWarning
             />
         </div>
     );
