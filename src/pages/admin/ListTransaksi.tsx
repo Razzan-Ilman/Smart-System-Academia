@@ -56,21 +56,21 @@ export default function AdminListTransaksi() {
     });
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
             {/* Header Title */}
             <div className="flex items-center gap-3">
-                <UnorderedListOutlined className="text-2xl text-gray-700" />
-                <h1 className="text-2xl font-bold text-gray-800">List Transaksi</h1>
+                <UnorderedListOutlined className="text-xl md:text-2xl text-gray-700" />
+                <h1 className="text-xl md:text-2xl font-bold text-gray-800">List Transaksi</h1>
             </div>
 
-            <div className="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-6">
-                {/* Toolbar */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-4">
+            <div className="bg-white rounded-2xl md:rounded-[1.5rem] shadow-sm border border-gray-100 p-4 md:p-6">
+                {/* Toolbar - Responsive */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6 md:mb-8">
+                    <div className="flex items-center gap-2 sm:gap-4 flex-1">
                         <div className="relative">
                             <button
                                 onClick={() => setShowFilter(!showFilter)}
-                                className="px-8 py-2.5 bg-white border border-gray-200 rounded-xl flex items-center gap-2 font-semibold text-gray-700 hover:bg-gray-50 transition shadow-sm"
+                                className="px-4 md:px-8 py-2 md:py-2.5 bg-white border border-gray-200 rounded-xl flex items-center gap-2 font-semibold text-gray-700 hover:bg-gray-50 transition shadow-sm text-sm md:text-base whitespace-nowrap"
                             >
                                 <MenuOutlined /> Filter
                             </button>
@@ -120,20 +120,20 @@ export default function AdminListTransaksi() {
                             )}
                         </div>
 
-                        <div className="relative group">
+                        <div className="relative group flex-1">
                             <input
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Hinted search text"
-                                className="pl-6 pr-12 py-2.5 bg-[#f3f0f7] rounded-full w-96 focus:outline-none focus:ring-1 focus:ring-purple-200 transition-all shadow-inner text-gray-600"
+                                className="pl-4 md:pl-6 pr-10 md:pr-12 py-2 md:py-2.5 bg-[#f3f0f7] rounded-full w-full focus:outline-none focus:ring-1 focus:ring-purple-200 transition-all shadow-inner text-gray-600 text-sm md:text-base"
                             />
-                            <SearchOutlined className="absolute right-5 top-3.5 text-gray-400 group-hover:text-purple-500 cursor-pointer transition-colors" />
+                            <SearchOutlined className="absolute right-4 md:right-5 top-2.5 md:top-3.5 text-gray-400 group-hover:text-purple-500 cursor-pointer transition-colors" />
                         </div>
                     </div>
                 </div>
 
-                {/* Table Container */}
-                <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+                {/* Desktop Table View - Hidden on Mobile */}
+                <div className="hidden lg:block border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
                     {/* Table Header */}
                     <div className="grid grid-cols-12 bg-white font-bold p-5 text-gray-800 border-b border-gray-100">
                         <div className="col-span-1 pl-4 uppercase tracking-wider text-sm">NO</div>
@@ -149,7 +149,7 @@ export default function AdminListTransaksi() {
 
                     {/* Table Rows */}
                     {filteredTransactions.length > 0 ? (
-                        transactionDetails.map((detail, index) => (
+                        filteredTransactions.map((detail, index) => (
                             <div
                                 key={detail.id}
                                 className="grid grid-cols-12 items-center p-6 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition"
@@ -162,8 +162,8 @@ export default function AdminListTransaksi() {
                                 <div className="col-span-1 text-center text-gray-600">{detail.method}</div>
                                 <div className="col-span-1 text-center">
                                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${detail.status === 'Success' ? 'bg-green-100 text-green-700' :
-                                        detail.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                                            'bg-red-100 text-red-700'
+                                            detail.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-red-100 text-red-700'
                                         }`}>
                                         {detail.status}
                                     </span>
@@ -171,7 +171,7 @@ export default function AdminListTransaksi() {
                                 <div className="col-span-2 text-center text-gray-600">{detail.date}</div>
                                 <div className="col-span-1 flex justify-center">
                                     <button className="p-2 text-gray-700 hover:text-blue-600 transition hover:scale-110 active:scale-90 bg-white rounded-lg shadow-sm border border-gray-50">
-                                        <EditOutlined className="text-3xl" />
+                                        <EditOutlined className="text-2xl" />
                                     </button>
                                 </div>
                             </div>
@@ -190,6 +190,63 @@ export default function AdminListTransaksi() {
                             </div>
                         ))
                     }
+                </div>
+
+                {/* Mobile Card View - Shown on Mobile/Tablet */}
+                <div className="lg:hidden space-y-3">
+                    {/* Table Header - Mobile */}
+                    <div className="bg-white rounded-xl p-3 grid grid-cols-4 gap-2 font-bold text-gray-800 text-xs border border-gray-200">
+                        <div>NAMA/PRODUK</div>
+                        <div className="text-center">NOMINAL</div>
+                        <div className="text-center">STATUS</div>
+                        <div className="text-center">AKSI</div>
+                    </div>
+
+                    {/* Transaction Cards */}
+                    {filteredTransactions.length > 0 ? (
+                        filteredTransactions.map((detail, index) => (
+                            <div
+                                key={detail.id}
+                                className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm hover:shadow-md transition"
+                            >
+                                <div className="grid grid-cols-4 gap-3 items-center">
+                                    {/* Name & Product Info */}
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-bold text-gray-500 mb-0.5">{index + 1}. {detail.trxId}</p>
+                                        <p className="font-bold text-sm text-gray-800 truncate">{detail.name}</p>
+                                        <p className="text-xs text-gray-600 truncate">{detail.product}</p>
+                                    </div>
+
+                                    {/* Nominal */}
+                                    <div className="text-center">
+                                        <p className="font-bold text-sm text-green-600">{detail.nominal}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">{detail.method}</p>
+                                    </div>
+
+                                    {/* Status */}
+                                    <div className="flex justify-center">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${detail.status === 'Success' ? 'bg-green-100 text-green-700' :
+                                                detail.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-red-100 text-red-700'
+                                            }`}>
+                                            {detail.status}
+                                        </span>
+                                    </div>
+
+                                    {/* Action */}
+                                    <div className="flex justify-center">
+                                        <button className="p-2 text-gray-700 hover:text-blue-600 transition hover:scale-110 active:scale-90 bg-white rounded-lg shadow-sm border border-gray-100">
+                                            <EditOutlined className="text-lg" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="p-10 text-center text-gray-400 font-medium bg-white rounded-xl border border-gray-200">
+                            Data transaksi "{search}" tidak ditemukan
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
