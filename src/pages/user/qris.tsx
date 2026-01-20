@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { toast } from 'sonner';
 import Navbar from '../../components/user/Navbar';
 import { QrCode, CheckCircle2, Clock, Copy, ArrowLeft, RefreshCw } from 'lucide-react';
 
 const QRISPayment = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Get data from location state or URL params
   const searchParams = new URLSearchParams(location.search);
   const stateData = location.state || {};
-  
+
   const [paymentStatus, setPaymentStatus] = useState('pending');
   const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes in seconds
   const [copied, setCopied] = useState(false);
@@ -24,7 +25,23 @@ const QRISPayment = () => {
 
   // Countdown timer
   useEffect(() => {
-    if (timeLeft <= 0) return;
+    if (timeLeft <= 0) {
+      // Timer expired - redirect to payment failed
+      toast.error('Waktu pembayaran telah habis!');
+      setTimeout(() => {
+        navigate('/payment-failed', {
+          state: {
+            orderId: orderNumber,
+            amount: totalAmount,
+            email: buyerEmail,
+            name: buyerName,
+            phone: buyerPhone,
+            reason: 'Waktu pembayaran habis'
+          }
+        });
+      }, 2000);
+      return;
+    }
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -37,17 +54,17 @@ const QRISPayment = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [timeLeft, navigate, orderNumber, totalAmount, buyerEmail, buyerName, buyerPhone]);
 
   // Format time
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   // Format Rupiah
-  const formatRupiah = (value) =>
+  const formatRupiah = (value: number): string =>
     new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -58,17 +75,25 @@ const QRISPayment = () => {
   const handleCopy = () => {
     navigator.clipboard.writeText(orderNumber);
     setCopied(true);
+    toast.success('Nomor pesanan berhasil disalin!');
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Handle back navigation
+  const handleBack = () => {
+    if (confirm('Apakah Anda yakin ingin membatalkan pembayaran?')) {
+      navigate('/payment');
+    }
   };
 
   // Check payment status
   const checkPaymentStatus = () => {
     setPaymentStatus('checking');
-    
+
     // Simulate API call - replace with actual API
     setTimeout(() => {
       const isSuccess = false;
-      
+
       if (isSuccess) {
         setPaymentStatus('success');
         setTimeout(() => {
@@ -119,17 +144,26 @@ const QRISPayment = () => {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 relative overflow-hidden">
       {/* Decorative Elements */}
       <div className="absolute top-0 left-0 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{animationDelay: '1s'}}></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{ animationDelay: '1s' }}></div>
 
       {/* Header */}
-        <Navbar />
+      <Navbar />
 
       {/* Main Content */}
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-          
+
           {/* QRIS Header */}
-          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-8 text-center">
+          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-8 text-center relative">
+            {/* Back Button */}
+            <button
+              onClick={handleBack}
+              className="absolute left-4 top-4 p-2 bg-white/20 hover:bg-white/30 rounded-full transition-all transform hover:scale-110"
+              title="Kembali"
+            >
+              <ArrowLeft className="w-5 h-5 text-white" />
+            </button>
+
             <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full mb-4">
               <QrCode className="w-8 h-8 text-purple-600" />
             </div>
@@ -153,33 +187,33 @@ const QRISPayment = () => {
                 {/* QR Code SVG */}
                 <div className="w-64 h-64 bg-white flex items-center justify-center border-4 border-gray-200 rounded-lg">
                   <svg width="256" height="256" viewBox="0 0 256 256">
-                    <rect width="256" height="256" fill="white"/>
+                    <rect width="256" height="256" fill="white" />
                     <g fill="black">
                       {/* Top-left corner */}
-                      <rect x="20" y="20" width="60" height="60"/>
-                      <rect x="30" y="30" width="40" height="40" fill="white"/>
-                      <rect x="40" y="40" width="20" height="20"/>
-                      
+                      <rect x="20" y="20" width="60" height="60" />
+                      <rect x="30" y="30" width="40" height="40" fill="white" />
+                      <rect x="40" y="40" width="20" height="20" />
+
                       {/* Top-right corner */}
-                      <rect x="176" y="20" width="60" height="60"/>
-                      <rect x="186" y="30" width="40" height="40" fill="white"/>
-                      <rect x="196" y="40" width="20" height="20"/>
-                      
+                      <rect x="176" y="20" width="60" height="60" />
+                      <rect x="186" y="30" width="40" height="40" fill="white" />
+                      <rect x="196" y="40" width="20" height="20" />
+
                       {/* Bottom-left corner */}
-                      <rect x="20" y="176" width="60" height="60"/>
-                      <rect x="30" y="186" width="40" height="40" fill="white"/>
-                      <rect x="40" y="196" width="20" height="20"/>
-                      
+                      <rect x="20" y="176" width="60" height="60" />
+                      <rect x="30" y="186" width="40" height="40" fill="white" />
+                      <rect x="40" y="196" width="20" height="20" />
+
                       {/* Random pattern for demo */}
-                      {Array.from({length: 100}).map((_, i) => {
+                      {Array.from({ length: 100 }).map((_, i) => {
                         const x = 20 + (i % 10) * 20;
                         const y = 100 + Math.floor(i / 10) * 10;
-                        return Math.random() > 0.5 ? <rect key={i} x={x} y={y} width="8" height="8"/> : null;
+                        return Math.random() > 0.5 ? <rect key={i} x={x} y={y} width="8" height="8" /> : null;
                       })}
                     </g>
                   </svg>
                 </div>
-                
+
                 <div className="text-center mt-4">
                   <p className="text-sm text-gray-600 mb-2">Nomor Pesanan</p>
                   <div className="flex items-center justify-center gap-2 bg-gray-50 px-4 py-2 rounded-lg">
@@ -256,13 +290,12 @@ const QRISPayment = () => {
             <button
               onClick={checkPaymentStatus}
               disabled={paymentStatus === 'checking' || paymentStatus === 'success'}
-              className={`w-full py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 ${
-                paymentStatus === 'checking'
-                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                  : paymentStatus === 'success'
+              className={`w-full py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 ${paymentStatus === 'checking'
+                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                : paymentStatus === 'success'
                   ? 'bg-green-500 text-white'
                   : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-xl hover:shadow-2xl'
-              }`}
+                }`}
             >
               {paymentStatus === 'checking' ? (
                 <>

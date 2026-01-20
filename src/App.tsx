@@ -25,36 +25,39 @@ import NotFound from "./pages/NotFound";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* USER */}
-        <Route path="/" element={<Home />} />
-        <Route path="/produk/detail" element={<DetailProduk />} />
-        <Route path="/payment" element={<Payment />} />
-        <Route path="/qris" element={<Qris />} />
-        <Route path="/payment-success" element={<PaymentSuccess />} />
-        <Route path="/payment-failed" element={<PaymentFailed />} />
+    <>
+      <Toaster position="top-right" richColors />
+      <BrowserRouter>
+        <Routes>
+          {/* USER */}
+          <Route path="/" element={<Home />} />
+          <Route path="/produk/detail" element={<DetailProduk />} />
+          <Route path="/payment" element={<Payment />} />
+          <Route path="/qris" element={<Qris />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/payment-failed" element={<PaymentFailed />} />
 
 
-        {/* ADMIN */}
-        <Route path="/admin/login" element={<AdminLogin />} />
-        {/* <Route path="/admin/register" element={<AdminRegister />} /> */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="kategori-produk" element={<AdminKategoriProduk />} />
-          <Route path="kategori-produk/tambah" element={<AdminTambahKategori />} />
-          <Route path="kategori-produk/edit/:id" element={<AdminEditKategori />} />
-          <Route path="produk" element={<AdminProduk />} />
-          <Route path="produk/tambah" element={<AdminTambahProduk />} />
-          <Route path="produk/edit/:id" element={<AdminEditProduk />} />
-          <Route path="list-transaksi" element={<AdminListTransaksi />} />
-        </Route>
+          {/* ADMIN */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          {/* <Route path="/admin/register" element={<AdminRegister />} /> */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="kategori-produk" element={<AdminKategoriProduk />} />
+            <Route path="kategori-produk/tambah" element={<AdminTambahKategori />} />
+            <Route path="kategori-produk/edit/:id" element={<AdminEditKategori />} />
+            <Route path="produk" element={<AdminProduk />} />
+            <Route path="produk/tambah" element={<AdminTambahProduk />} />
+            <Route path="produk/edit/:id" element={<AdminEditProduk />} />
+            <Route path="list-transaksi" element={<AdminListTransaksi />} />
+          </Route>
 
-        {/* 404 Not Found - Catch all routes */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+          {/* 404 Not Found - Catch all routes */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
 
