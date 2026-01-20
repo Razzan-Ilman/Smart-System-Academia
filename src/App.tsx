@@ -19,6 +19,7 @@ import Home from "./pages/user/Home";
 import DetailProduk from "./pages/user/detailProduk";
 import Payment from "./pages/user/Payment";
 import Qris from "./pages/user/qris";
+import VirtualAccount from './pages/user/VirtualAkun';
 import PaymentSuccess from './pages/user/PaymentSuccess';
 import PaymentFailed from './pages/user/PaymentFailed';
 import NotFound from "./pages/NotFound";
@@ -34,6 +35,7 @@ function App() {
           <Route path="/produk/detail" element={<DetailProduk />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/qris" element={<Qris />} />
+          <Route path="/virtual-account" element={<VirtualAccount />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
 

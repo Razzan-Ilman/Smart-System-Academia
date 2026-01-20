@@ -1,74 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, CreditCard, CheckCircle2, User, Mail, Phone, Plus, Menu, ChevronRight } from 'lucide-react';
+import { ShoppingCart, CreditCard, CheckCircle2, User, Mail, Phone, Plus, ChevronRight } from 'lucide-react';
 import Navbar from '../../components/user/Navbar';
+import PopupPayment from '../../components/user/PopupPayment'; 
 
-// Mock PopupPayment Component
-type PaymentMethod = {
-  id: string;
-  name: string;
-  category?: string;
-  logo: string;
-};
-
-interface PopupPaymentProps {
-  open: boolean;
-  onClose: () => void;
-  methods: PaymentMethod[];
-  selected: string;
-  onSelect: (id: string) => void;
-  onConfirm: () => void;
-}
-
-const PopupPayment: React.FC<PopupPaymentProps> = ({ open, onClose, methods, selected, onSelect, onConfirm }) => {
-  if (!open) return null;
-  
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-md p-6">
-        <h2 className="text-xl font-bold mb-4">Pilih Metode Pembayaran</h2>
-        <div className="space-y-3">
-          {methods.map((method) => (
-            <button
-              key={method.id}
-              onClick={() => onSelect(method.id)}
-              className={`w-full p-4 rounded-xl border-2 flex items-center gap-3 transition ${
-                selected === method.id
-                  ? 'border-purple-500 bg-purple-50'
-                  : 'border-gray-200 hover:border-purple-300'
-              }`}
-            >
-              <img src={method.logo} alt={method.name} className="h-8 object-contain" />
-              <span className="flex-1 text-left font-semibold">{method.name}</span>
-              {selected === method.id && <CheckCircle2 className="text-purple-600" />}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-3 mt-6">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 rounded-xl border-2 border-gray-300 font-semibold hover:bg-gray-50"
-          >
-            Batal
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={!selected}
-            className={`flex-1 py-3 rounded-xl font-semibold ${
-              selected
-                ? 'bg-purple-600 text-white hover:bg-purple-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            Konfirmasi
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const Payment = () => {
+  const navigate = useNavigate();
   const [openPopup, setOpenPopup] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -106,25 +44,66 @@ const Payment = () => {
     phone: ''
   });
 
-  // ================= PAYMENT METHODS =================
   const paymentMethods = [
     {
       id: "qris",
       name: "QRIS",
-      category: "instant",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/7/72/QRIS_logo.svg",
+      category: "Instant Payment",
+      logo: "/payment/qris.png",
     },
     {
-      id: "gopay",
-      name: "GoPay",
-      category: "instant",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/8/86/GoPay_logo.svg",
+      id: "permata",
+      name: "Permata Bank",
+      category: "Virtual Account",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Bank_Permata_logo.svg/320px-Bank_Permata_logo.svg.png",
     },
     {
       id: "bca",
-      name: "BCA Virtual Account",
-      category: "va",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Bank_Central_Asia.svg",
+      name: "BCA",
+      category: "Virtual Account",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/320px-Bank_Central_Asia.svg.png",
+    },
+    {
+      id: "bsi",
+      name: "Bank Syariah Indonesia",
+      category: "Virtual Account",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Bank_Syariah_Indonesia.svg/320px-Bank_Syariah_Indonesia.svg.png",
+    },
+    {
+      id: "bri",
+      name: "BRI",
+      category: "Virtual Account",
+      logo: "/payment/BRI.jpeg",
+    },
+    {
+      id: "mandiri",
+      name: "Bank Mandiri",
+      category: "Virtual Account",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/320px-Bank_Mandiri_logo_2016.svg.png",
+    },
+    {
+      id: "mandiri_va",
+      name: "Mandiri Virtual Account",
+      category: "Virtual Account",
+      logo: "/payment/Mandiri_Virtual_Account.jpeg",
+    },
+    {
+      id: "muamalat",
+      name: "Bank Muamalat",
+      category: "Virtual Account",
+      logo: "/payment/Bank_Muamalat.jpeg",
+    },
+    {
+      id: "cimb",
+      name: "CIMB Niaga",
+      category: "Virtual Account",
+      logo: "/payment/CIMB_Niaga.jpeg",
+    },
+    {
+      id: "sinarmas",
+      name: "Bank Sinarmas",
+      category: "Virtual Account",
+      logo: "/payment/Bank_Sinarmas.jpeg",
     },
   ];
 
@@ -149,40 +128,59 @@ const Payment = () => {
     }).format(value);
 
   // ================= CHECKOUT HANDLER =================
-const navigate = useNavigate();   // ← TAMBAH INI DI ATAS COMPONENT
+  const handleCheckout = () => {
+    if (!buyerInfo.email || !buyerInfo.name || !buyerInfo.phone) {
+      alert('Mohon lengkapi semua informasi pembeli');
+      return;
+    }
 
-const handleCheckout = () => {
-  if (!buyerInfo.email || !buyerInfo.name || !buyerInfo.phone) {
-    alert('Mohon lengkapi semua informasi pembeli');
-    return;
-  }
+    if (!agreeTerms) {
+      alert('Mohon setujui syarat dan ketentuan');
+      return;
+    }
 
-  if (!agreeTerms) {
-    alert('Mohon setujui syarat dan ketentuan');
-    return;
-  }
+    if (!selectedPayment) {
+      alert('Mohon pilih metode pembayaran');
+      return;
+    }
 
-  if (!selectedPayment) {
-    alert('Mohon pilih metode pembayaran');
-    return;
-  }
+    // Handle QRIS Payment
+    if (selectedPayment === "qris") {
+      navigate("/qris", {
+        state: {
+          amount: totalPrice,
+          email: buyerInfo.email,
+          name: buyerInfo.name,
+          phone: buyerInfo.phone,
+          orderId: `ORD-${Date.now()}`
+        }
+      });
+      return;
+    }
 
-  // ========== INI BAGIAN PENTING ==========
-  if (selectedPayment === "qris") {
-    navigate("/qris", {
-      state: {
-        amount: totalPrice,
-        email: buyerInfo.email,
-        name: buyerInfo.name,
-        phone: buyerInfo.phone,
-        orderId: `ORD-${Date.now()}`
-      }
-    });
-    return;
-  }
+    // Handle Virtual Account Payments
+    const virtualAccountMethods = [
+      "bca", "mandiri", "bri", "permata", "bsi", 
+      "cimb", "mandiri_va", "muamalat", "sinarmas"
+    ];
 
-  alert("Metode lain belum diintegrasikan");
-};
+    if (virtualAccountMethods.includes(selectedPayment)) {
+      navigate("/virtual-account", {
+        state: {
+          amount: totalPrice,
+          email: buyerInfo.email,
+          name: buyerInfo.name,
+          phone: buyerInfo.phone,
+          orderId: `ORD-${Date.now()}`,
+          paymentMethod: selectedPayment
+        }
+      });
+      return;
+    }
+
+    // Jika metode pembayaran lain yang belum diintegrasikan
+    alert("Metode pembayaran ini belum tersedia");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-100 relative overflow-hidden">
@@ -448,6 +446,7 @@ const handleCheckout = () => {
         </div>
       </div>
 
+      {/* POPUP PAYMENT - Menggunakan component yang benar */}
       <PopupPayment
         open={openPopup}
         onClose={() => setOpenPopup(false)}

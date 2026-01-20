@@ -27,14 +27,20 @@ const PopupPayment: React.FC<Props> = ({
 }) => {
   if (!open) return null;
 
-  const instant = methods.filter(m => m.category === "instant");
-  const va = methods.filter(m => m.category === "va");
+  // Filter berdasarkan kategori yang BENAR
+  const instantPayment = methods.filter(m => m.category === "Instant Payment");
+  const bankTransfer = methods.filter(m => m.category === "Bank Transfer");
+  const virtualAccount = methods.filter(m => m.category === "Virtual Account");
+
+  console.log("Instant Payment:", instantPayment);
+  console.log("Bank Transfer:", bankTransfer);
+  console.log("Virtual Account:", virtualAccount);
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-2xl w-full max-w-[500px] mx-4 shadow-2xl">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-6 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6 sticky top-0 bg-white pb-4 border-b">
           <h3 className="text-xl font-bold flex items-center gap-2">
             <CreditCard className="w-6 h-6 text-purple-600" />
             Pilih Pembayaran
@@ -48,30 +54,58 @@ const PopupPayment: React.FC<Props> = ({
         </div>
 
         {/* Instant Payment Methods */}
-        {instant.length > 0 && (
+        {instantPayment.length > 0 && (
           <div className="mb-6">
             <p className="text-sm font-semibold text-gray-500 mb-3">Instant Payment</p>
-            <div className="space-y-2">
-              {instant.map(m => (
+            <div className="grid grid-cols-2 gap-3">
+              {instantPayment.map(m => (
                 <div
                   key={m.id}
                   onClick={() => onSelect(m.id)}
-                  className={`p-4 border-2 rounded-xl flex justify-between items-center cursor-pointer transition-all hover:shadow-md ${
+                  className={`p-4 border-2 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:shadow-md min-h-[100px] relative ${
                     selected === m.id 
                       ? "border-purple-500 bg-purple-50" 
                       : "border-gray-200 hover:border-purple-300"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <img 
-                      src={m.logo} 
-                      alt={m.name}
-                      className="h-6 object-contain" 
-                    />
-                    <span className="font-medium text-gray-800">{m.name}</span>
-                  </div>
+                  <img 
+                    src={m.logo} 
+                    alt={m.name}
+                    className="h-8 object-contain" 
+                  />
+                  <span className="font-medium text-gray-800 text-sm text-center">{m.name}</span>
                   {selected === m.id && (
-                    <CheckCircle2 className="w-5 h-5 text-purple-600" />
+                    <CheckCircle2 className="w-5 h-5 text-purple-600 absolute top-2 right-2" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Bank Transfer Payment Methods */}
+        {bankTransfer.length > 0 && (
+          <div className="mb-6">
+            <p className="text-sm font-semibold text-gray-500 mb-3">Bank Transfer</p>
+            <div className="grid grid-cols-2 gap-3">
+              {bankTransfer.map(m => (
+                <div
+                  key={m.id}
+                  onClick={() => onSelect(m.id)}
+                  className={`p-4 border-2 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:shadow-md min-h-[100px] relative ${
+                    selected === m.id 
+                      ? "border-purple-500 bg-purple-50" 
+                      : "border-gray-200 hover:border-purple-300"
+                  }`}
+                >
+                  <img 
+                    src={m.logo} 
+                    alt={m.name}
+                    className="h-8 object-contain" 
+                  />
+                  <span className="font-medium text-gray-800 text-sm text-center">{m.name}</span>
+                  {selected === m.id && (
+                    <CheckCircle2 className="w-5 h-5 text-purple-600 absolute top-2 right-2" />
                   )}
                 </div>
               ))}
@@ -80,30 +114,28 @@ const PopupPayment: React.FC<Props> = ({
         )}
 
         {/* Virtual Account Payment Methods */}
-        {va.length > 0 && (
+        {virtualAccount.length > 0 && (
           <div className="mb-6">
             <p className="text-sm font-semibold text-gray-500 mb-3">Virtual Account</p>
-            <div className="space-y-2">
-              {va.map(m => (
+            <div className="grid grid-cols-2 gap-3">
+              {virtualAccount.map(m => (
                 <div
                   key={m.id}
                   onClick={() => onSelect(m.id)}
-                  className={`p-4 border-2 rounded-xl flex justify-between items-center cursor-pointer transition-all hover:shadow-md ${
+                  className={`p-4 border-2 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:shadow-md min-h-[100px] relative ${
                     selected === m.id 
                       ? "border-purple-500 bg-purple-50" 
                       : "border-gray-200 hover:border-purple-300"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <img 
-                      src={m.logo} 
-                      alt={m.name}
-                      className="h-6 object-contain" 
-                    />
-                    <span className="font-medium text-gray-800">{m.name}</span>
-                  </div>
+                  <img 
+                    src={m.logo} 
+                    alt={m.name}
+                    className="h-8 object-contain" 
+                  />
+                  <span className="font-medium text-gray-800 text-sm text-center">{m.name}</span>
                   {selected === m.id && (
-                    <CheckCircle2 className="w-5 h-5 text-purple-600" />
+                    <CheckCircle2 className="w-5 h-5 text-purple-600 absolute top-2 right-2" />
                   )}
                 </div>
               ))}

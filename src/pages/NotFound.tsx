@@ -49,7 +49,7 @@ export default function NotFound() {
                 {/* Message - Compact */}
                 <div className="space-y-2 mb-6">
                     <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
-                        Sepertinya aku tersesat...
+                        Sepertinya Kamu tersesat...
                     </h2>
                     <p className="text-base text-gray-600 max-w-md mx-auto">
                         Aku tidak menemukan halaman itu, tapi aku bisa mengantarmu pulang

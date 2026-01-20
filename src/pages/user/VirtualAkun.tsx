@@ -1,0 +1,286 @@
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Copy, Check, Clock, Building2, AlertCircle, RefreshCw } from 'lucide-react';
+import Navbar from '../../components/user/Navbar';
+
+const VirtualAccount = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [copied, setCopied] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(24 * 60 * 60); // 24 hours in seconds
+  const [isChecking, setIsChecking] = useState(false);
+
+  // Data dari payment page
+  const { amount, email, name, phone, orderId, paymentMethod } = location.state || {};
+
+  // Generate Virtual Account Number (contoh)
+  const vaNumber = `8808${Math.floor(Math.random() * 10000000000000).toString().padStart(13, '0')}`;
+
+  // Bank info berdasarkan payment method
+  const bankInfo = {
+    bca: { name: 'BCA', color: 'from-blue-600 to-blue-700', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/320px-Bank_Central_Asia.svg.png' },
+    mandiri: { name: 'Bank Mandiri', color: 'from-yellow-500 to-orange-600', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/320px-Bank_Mandiri_logo_2016.svg.png' },
+    bri: { name: 'BRI', color: 'from-blue-500 to-blue-600', logo: '/payment/BRI.jpeg' },
+    bni: { name: 'BNI', color: 'from-orange-500 to-orange-600', logo: 'https://upload.wikimedia.org/wikipedia/id/thumb/5/55/BNI_logo.svg/320px-BNI_logo.svg.png' },
+    permata: { name: 'Permata Bank', color: 'from-green-600 to-green-700', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Bank_Permata_logo.svg/320px-Bank_Permata_logo.svg.png' },
+    bsi: { name: 'Bank Syariah Indonesia', color: 'from-teal-600 to-teal-700', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Bank_Syariah_Indonesia.svg/320px-Bank_Syariah_Indonesia.svg.png' },
+    cimb: { name: 'CIMB Niaga', color: 'from-red-600 to-red-700', logo: '/payment/CIMB_Niaga.jpeg' },
+    default: { name: 'Virtual Account', color: 'from-purple-600 to-pink-600', logo: '' }
+  };
+
+  const currentBank = bankInfo[paymentMethod] || bankInfo.default;
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 0) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatRupiah = (value) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(value);
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCheckPayment = () => {
+    setIsChecking(true);
+    
+    // Simulasi pengecekan pembayaran (3 detik)
+    setTimeout(() => {
+      setIsChecking(false);
+      
+      // Random success/failed untuk demo (50/50)
+      const isSuccess = Math.random() > 0.5;
+      
+      if (isSuccess) {
+        navigate('/payment-success', {
+          state: {
+            orderId,
+            amount,
+            paymentMethod: currentBank.name,
+            vaNumber,
+            name,
+            email
+          }
+        });
+      } else {
+        navigate('/payment-failed', {
+          state: {
+            orderId,
+            amount,
+            paymentMethod: currentBank.name,
+            reason: 'Pembayaran belum diterima. Silakan coba lagi.'
+          }
+        });
+      }
+    }, 3000);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-100 relative overflow-hidden">
+      {/* Decorative Elements */}
+      <div className="absolute top-0 left-0 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{animationDelay: '1s'}}></div>
+      
+      <Navbar />
+
+      {/* Main Content */}
+      <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
+        {/* Timer Warning */}
+        <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl p-4 mb-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Clock className="w-6 h-6" />
+              <div>
+                <p className="font-semibold">Selesaikan Pembayaran Dalam:</p>
+                <p className="text-sm opacity-90">Pesanan akan otomatis dibatalkan jika waktu habis</p>
+              </div>
+            </div>
+            <div className="text-3xl font-bold tabular-nums">
+              {formatTime(timeLeft)}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Virtual Account Info */}
+          <div className="space-y-6">
+            {/* Bank Card */}
+            <div className={`bg-gradient-to-br ${currentBank.color} rounded-3xl shadow-2xl p-8 text-white relative overflow-hidden`}>
+              <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-10 rounded-full -mr-20 -mt-20"></div>
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-10 rounded-full -ml-16 -mb-16"></div>
+              
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-8">
+                  <Building2 className="w-8 h-8" />
+                  {currentBank.logo && (
+                    <img src={currentBank.logo} alt={currentBank.name} className="h-8 object-contain bg-white px-3 py-1 rounded" />
+                  )}
+                </div>
+                
+                <div className="mb-6">
+                  <p className="text-sm opacity-80 mb-2">Virtual Account Number</p>
+                  <div className="flex items-center justify-between bg-white/20 backdrop-blur-sm rounded-xl p-4">
+                    <p className="text-2xl font-bold tracking-wider">{vaNumber}</p>
+                    <button
+                      onClick={() => copyToClipboard(vaNumber)}
+                      className="ml-4 p-2 bg-white/20 hover:bg-white/30 rounded-lg transition"
+                    >
+                      {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm opacity-80 mb-2">Total Pembayaran</p>
+                  <p className="text-3xl font-bold">{formatRupiah(amount)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Instructions */}
+            <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl p-6 border border-gray-100">
+              <h3 className="font-bold text-lg text-gray-800 mb-4">Cara Pembayaran</h3>
+              
+              <div className="space-y-3">
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-purple-600 font-bold text-sm">1</span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800">Pilih Transfer Bank</p>
+                    <p className="text-sm text-gray-600">Buka aplikasi m-banking atau datang ke ATM {currentBank.name}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-purple-600 font-bold text-sm">2</span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800">Masukkan Nomor VA</p>
+                    <p className="text-sm text-gray-600">Salin dan masukkan nomor Virtual Account di atas</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-purple-600 font-bold text-sm">3</span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800">Konfirmasi Pembayaran</p>
+                    <p className="text-sm text-gray-600">Periksa detail dan konfirmasi pembayaran sebesar {formatRupiah(amount)}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-purple-600 font-bold text-sm">4</span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800">Selesai</p>
+                    <p className="text-sm text-gray-600">Pembayaran akan dikonfirmasi otomatis dalam 5-10 menit</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Order Details */}
+          <div className="space-y-6">
+            {/* Order Info */}
+            <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl p-6 border border-gray-100">
+              <h3 className="font-bold text-lg text-gray-800 mb-4">Detail Pesanan</h3>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-600 text-sm">Order ID</span>
+                  <span className="font-semibold text-gray-800 text-sm">{orderId}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-600 text-sm">Nama</span>
+                  <span className="font-semibold text-gray-800 text-sm">{name}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-600 text-sm">Email</span>
+                  <span className="font-semibold text-gray-800 text-sm">{email}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-600 text-sm">No. Telepon</span>
+                  <span className="font-semibold text-gray-800 text-sm">{phone}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-gray-600 text-sm">Metode Pembayaran</span>
+                  <span className="font-semibold text-gray-800 text-sm">{currentBank.name}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Check Payment Button */}
+            <button
+              onClick={handleCheckPayment}
+              disabled={isChecking}
+              className={`w-full py-5 rounded-2xl font-bold text-lg shadow-xl transition-all transform hover:scale-[1.02] flex items-center justify-center gap-3 ${
+                isChecking
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-2xl'
+              }`}
+            >
+              {isChecking ? (
+                <>
+                  <RefreshCw className="w-6 h-6 animate-spin" />
+                  Memeriksa Pembayaran...
+                </>
+              ) : (
+                <>
+                  <Check className="w-6 h-6" />
+                  Cek Status Pembayaran
+                </>
+              )}
+            </button>
+
+            {/* Important Notes */}
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+              <div className="flex gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-amber-900 text-sm mb-2">Penting!</p>
+                  <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
+                    <li>Transfer sesuai nominal yang tertera</li>
+                    <li>Jangan tambahkan kode unik</li>
+                    <li>Simpan bukti transfer hingga pesanan selesai</li>
+                    <li>Hubungi customer service jika ada kendala</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default VirtualAccount;
