@@ -92,7 +92,7 @@ const QRISPayment = () => {
 
     // Simulate API call - replace with actual API
     setTimeout(() => {
-      const isSuccess = false;
+      const isSuccess = true;
 
       if (isSuccess) {
         setPaymentStatus('success');
