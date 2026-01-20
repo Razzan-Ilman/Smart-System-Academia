@@ -7,71 +7,87 @@ export default function NotFound() {
     const navigate = useNavigate();
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Decorative Background Elements */}
-            <div className="absolute top-0 left-0 w-96 h-96 bg-purple-200/30 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
-            <div className="absolute bottom-0 right-0 w-96 h-96 bg-pink-200/30 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-orange-200/20 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="min-h-screen bg-gradient-to-br from-purple-50/70 via-pink-50/50 to-orange-50/60 flex items-center justify-center p-4 relative overflow-hidden">
+            {/* Decorative Background Elements - Softer */}
+            <div className="absolute top-0 left-0 w-96 h-96 bg-purple-200/20 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-pink-200/20 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-orange-200/15 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{ animationDelay: '3s' }}></div>
 
-            <div className="text-center max-w-3xl relative z-10">
-                {/* 404 Number - Large and Bold */}
-                <h1 className="text-[140px] md:text-[200px] font-black bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent leading-none mb-8 animate-pulse">
-                    404
-                </h1>
+            <div className="text-center max-w-2xl relative z-10">
+                {/* Cat Animation - NOW THE HERO */}
+                <div className="mb-6 flex justify-center">
+                    <div className="relative">
+                        {/* Main cat container with subtle shadow */}
+                        <div className="relative bg-white/30 backdrop-blur-sm rounded-3xl p-6 shadow-xl border border-white/40">
+                            <Lottie
+                                animationData={catAnimation}
+                                loop={true}
+                                className="w-[280px] h-[200px] md:w-[350px] md:h-[250px]"
+                            />
 
-                {/* Cat Animation - Featured prominently */}
-                <div className="mb-8 flex justify-center">
-                    <div className="relative bg-white/40 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/50">
-                        <Lottie
-                            animationData={catAnimation}
-                            loop={true}
-                            className="w-[280px] h-[200px] md:w-[420px] md:h-[300px]"
-                        />
-
-                        {/* Floating text around animation */}
-                        <div className="absolute -top-4 -left-4 bg-purple-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg animate-bounce">
-                            Oops!
+                            {/* Paw prints trail - subtle storytelling */}
+                            <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex gap-3 opacity-30">
+                                <span className="text-2xl animate-pulse" style={{ animationDelay: '0s' }}>🐾</span>
+                                <span className="text-xl animate-pulse" style={{ animationDelay: '0.3s' }}>🐾</span>
+                                <span className="text-lg animate-pulse" style={{ animationDelay: '0.6s' }}>🐾</span>
+                            </div>
                         </div>
-                        <div className="absolute -bottom-4 -right-4 bg-pink-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg animate-bounce" style={{ animationDelay: '0.2s' }}>
-                            Lost?
+
+                        {/* Thought bubble - cat's perspective */}
+                        <div className="absolute -top-6 -right-6 bg-white/90 backdrop-blur-sm text-gray-700 px-4 py-2 rounded-2xl text-sm font-medium shadow-lg border border-gray-200/50 animate-bounce" style={{ animationDuration: '3s' }}>
+                            <span className="text-base">🤔</span>
+                            <div className="absolute -bottom-2 right-6 w-3 h-3 bg-white/90 rotate-45 border-r border-b border-gray-200/50"></div>
                         </div>
                     </div>
                 </div>
 
-                {/* Message */}
-                <div className="space-y-3 mb-10">
-                    <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-700 to-pink-700 bg-clip-text text-transparent">
-                        Halaman Tidak Ditemukan
+                {/* 404 Number - Smaller, supporting role */}
+                <h1 className="text-[100px] md:text-[140px] font-black text-gray-300/60 leading-none mb-4">
+                    404
+                </h1>
+
+                {/* Message - Personal & Empathetic */}
+                <div className="space-y-3 mb-8">
+                    <h2 className="text-2xl md:text-3xl font-bold text-gray-800">
+                        Sepertinya aku tersesat...
                     </h2>
-                    <p className="text-lg text-gray-700 max-w-md mx-auto">
-                        Kucing kami sudah mencari ke seluruh internet, tapi tidak menemukan halaman yang Anda cari
+                    <p className="text-base md:text-lg text-gray-600 max-w-md mx-auto leading-relaxed">
+                        Aku tidak menemukan halaman itu, tapi aku bisa mengantarmu pulang
                     </p>
                 </div>
 
-                {/* Buttons */}
-                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                {/* Buttons - With personality */}
+                <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
                     <button
                         onClick={() => navigate(-1)}
-                        className="group px-8 py-3.5 bg-white text-purple-700 rounded-xl font-bold border-2 border-purple-600 hover:bg-purple-600 hover:text-white transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105"
+                        className="group px-7 py-3 bg-white text-gray-700 rounded-xl font-medium border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg relative overflow-hidden"
                     >
-                        <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
                         Kembali
+                        {/* Tooltip on hover */}
+                        <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap pointer-events-none">
+                            Ke halaman sebelumnya
+                        </span>
                     </button>
 
                     <button
                         onClick={() => navigate('/')}
-                        className="group px-8 py-3.5 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 text-white rounded-xl font-bold hover:from-purple-700 hover:via-pink-700 hover:to-orange-700 transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105"
+                        className="group px-7 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-pink-600 transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-xl relative overflow-hidden"
                     >
-                        <HomeOutlined className="text-lg" />
-                        Ke Beranda
+                        <HomeOutlined className="text-base group-hover:scale-110 transition-transform duration-300" />
+                        Pulang Yuk
+                        {/* Tooltip on hover */}
+                        <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap pointer-events-none flex items-center gap-1">
+                            Ke beranda 🐾
+                        </span>
                     </button>
                 </div>
 
-                {/* Fun fact */}
-                <p className="mt-10 text-sm text-gray-600/80 italic">
-                    🐱 Kucing kami sedang beristirahat setelah pencarian yang panjang...
+                {/* Footer message - Comforting */}
+                <p className="mt-8 text-sm text-gray-500 italic">
+                    Jangan khawatir, aku akan menemanimu di sini
                 </p>
             </div>
         </div>
