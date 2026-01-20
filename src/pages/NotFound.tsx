@@ -5,15 +5,19 @@ import { useState, useEffect } from 'react';
 export default function NotFound() {
     const navigate = useNavigate();
     const [foxEyes, setFoxEyes] = useState({ left: 0, right: 0 });
+    const [catEyes, setCatEyes] = useState({ left: 0, right: 0 });
     const [isBlinking, setIsBlinking] = useState(false);
     const [tailWag, setTailWag] = useState(0);
     const [earWiggle, setEarWiggle] = useState(0);
+    const [catTailWag, setCatTailWag] = useState(0);
 
-    // Fox eyes follow mouse
+    // Fox and Cat eyes follow mouse
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
-            const eyeMovement = ((e.clientX / window.innerWidth) - 0.5) * 8;
-            setFoxEyes({ left: eyeMovement, right: eyeMovement });
+            const foxEyeMovement = ((e.clientX / window.innerWidth) - 0.5) * 8;
+            const catEyeMovement = ((e.clientX / window.innerWidth) - 0.5) * 10;
+            setFoxEyes({ left: foxEyeMovement, right: foxEyeMovement });
+            setCatEyes({ left: catEyeMovement, right: catEyeMovement });
         };
         window.addEventListener('mousemove', handleMouseMove);
         return () => window.removeEventListener('mousemove', handleMouseMove);
@@ -44,6 +48,14 @@ export default function NotFound() {
         return () => clearInterval(wiggleInterval);
     }, []);
 
+    // Cat tail wagging
+    useEffect(() => {
+        const catWagInterval = setInterval(() => {
+            setCatTailWag(prev => (prev + 1) % 3);
+        }, 500);
+        return () => clearInterval(catWagInterval);
+    }, []);
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 flex items-center justify-center p-4 relative overflow-hidden">
             {/* Decorative Background Elements */}
@@ -57,8 +69,95 @@ export default function NotFound() {
                     404
                 </h1>
 
-                {/* Fox Mascot */}
-                <div className="mb-8 flex justify-center">
+                {/* Fox & Cat Mascots */}
+                <div className="mb-8 flex justify-center items-end gap-8">
+                    {/* Cat Mascot */}
+                    <div className="relative">
+                        <svg width="180" height="180" viewBox="0 0 200 200" className="drop-shadow-2xl">
+                            {/* Cat Tail */}
+                            <path
+                                d="M 160 120 Q 180 100 185 80"
+                                stroke="#6b7280"
+                                strokeWidth="8"
+                                fill="none"
+                                strokeLinecap="round"
+                                className="transition-all duration-300"
+                                style={{
+                                    transform: `rotate(${catTailWag * 5}deg)`,
+                                    transformOrigin: '160px 120px',
+                                }}
+                            />
+
+                            {/* Body */}
+                            <ellipse cx="100" cy="130" rx="50" ry="45" fill="#6b7280" />
+
+                            {/* Head */}
+                            <circle cx="100" cy="80" r="40" fill="#6b7280" />
+
+                            {/* Ears */}
+                            <path d="M 70 60 L 60 30 L 80 50 Z" fill="#6b7280" />
+                            <path d="M 130 60 L 140 30 L 120 50 Z" fill="#6b7280" />
+
+                            {/* Inner Ears */}
+                            <path d="M 70 55 L 65 40 L 75 50 Z" fill="#fbbf24" />
+                            <path d="M 130 55 L 135 40 L 125 50 Z" fill="#fbbf24" />
+
+                            {/* Face white patch */}
+                            <ellipse cx="100" cy="85" rx="25" ry="20" fill="white" />
+
+                            {/* Eyes */}
+                            <g className={isBlinking ? 'opacity-0' : 'opacity-100'} style={{ transition: 'opacity 0.1s' }}>
+                                {/* Left Eye */}
+                                <ellipse cx="88" cy="75" rx="8" ry="12" fill="#1f2937" />
+                                <circle
+                                    cx={88 + catEyes.left}
+                                    cy="75"
+                                    r="3"
+                                    fill="#fbbf24"
+                                    className="transition-all duration-200"
+                                />
+
+                                {/* Right Eye */}
+                                <ellipse cx="112" cy="75" rx="8" ry="12" fill="#1f2937" />
+                                <circle
+                                    cx={112 + catEyes.right}
+                                    cy="75"
+                                    r="3"
+                                    fill="#fbbf24"
+                                    className="transition-all duration-200"
+                                />
+                            </g>
+
+                            {/* Blinking eyes */}
+                            {isBlinking && (
+                                <g>
+                                    <line x1="80" y1="75" x2="96" y2="75" stroke="#1f2937" strokeWidth="3" strokeLinecap="round" />
+                                    <line x1="104" y1="75" x2="120" y2="75" stroke="#1f2937" strokeWidth="3" strokeLinecap="round" />
+                                </g>
+                            )}
+
+                            {/* Nose */}
+                            <path d="M 100 85 L 95 90 L 105 90 Z" fill="#ef4444" />
+
+                            {/* Mouth */}
+                            <path d="M 100 90 Q 95 95 90 93" stroke="#1f2937" strokeWidth="2" fill="none" strokeLinecap="round" />
+                            <path d="M 100 90 Q 105 95 110 93" stroke="#1f2937" strokeWidth="2" fill="none" strokeLinecap="round" />
+
+                            {/* Whiskers */}
+                            <line x1="60" y1="80" x2="40" y2="75" stroke="#1f2937" strokeWidth="1.5" />
+                            <line x1="60" y1="85" x2="40" y2="85" stroke="#1f2937" strokeWidth="1.5" />
+                            <line x1="60" y1="90" x2="40" y2="95" stroke="#1f2937" strokeWidth="1.5" />
+                            <line x1="140" y1="80" x2="160" y2="75" stroke="#1f2937" strokeWidth="1.5" />
+                            <line x1="140" y1="85" x2="160" y2="85" stroke="#1f2937" strokeWidth="1.5" />
+                            <line x1="140" y1="90" x2="160" y2="95" stroke="#1f2937" strokeWidth="1.5" />
+
+                            {/* Paws */}
+                            <ellipse cx="80" cy="170" rx="12" ry="8" fill="#6b7280" />
+                            <ellipse cx="120" cy="170" rx="12" ry="8" fill="#6b7280" />
+                        </svg>
+                    </div>
+
+                    {/* Fox Mascot */}
                     <div className="relative">
                         {/* Fox SVG */}
                         <svg width="220" height="220" viewBox="0 0 220 220" className="drop-shadow-2xl">
@@ -191,7 +290,7 @@ export default function NotFound() {
                         Halaman Tidak Ditemukan
                     </h2>
                     <p className="text-base text-gray-700">
-                        Rubah kami mencari ke seluruh hutan, tapi tidak menemukan halaman yang Anda cari
+                        Rubah dan kucing kami sudah mencari ke mana-mana, tapi tidak menemukan halaman yang Anda cari
                     </p>
                 </div>
 
@@ -218,7 +317,7 @@ export default function NotFound() {
 
                 {/* Fun fact */}
                 <p className="mt-8 text-sm text-orange-600/70 italic">
-                    🦊 Tip: Gerakkan mouse Anda dan lihat mata rubahnya!
+                    🦊🐱 Tip: Gerakkan mouse Anda dan lihat mata mereka!
                 </p>
             </div>
         </div>
