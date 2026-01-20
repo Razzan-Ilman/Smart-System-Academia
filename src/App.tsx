@@ -17,6 +17,7 @@ import AdminListTransaksi from "./pages/admin/ListTransaksi";
 import Home from "./pages/user/Home";
 import DetailProduk from "./pages/user/detailProduk";
 import Payment from "./pages/user/Payment";
+import NotFound from "./pages/NotFound";
 
 function App() {
   return (
@@ -41,6 +42,9 @@ function App() {
           <Route path="produk/edit/:id" element={<AdminEditProduk />} />
           <Route path="list-transaksi" element={<AdminListTransaksi />} />
         </Route>
+
+        {/* 404 Not Found - Catch all routes */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );
