@@ -86,8 +86,8 @@ export default function AdminListTransaksi() {
                                                     key={status}
                                                     onClick={() => setFilterStatus(status)}
                                                     className={`w-full text-left px-3 py-1.5 rounded-lg transition text-sm font-medium ${filterStatus === status
-                                                            ? 'bg-blue-50 text-blue-700'
-                                                            : 'text-gray-700 hover:bg-gray-50'
+                                                        ? 'bg-blue-50 text-blue-700'
+                                                        : 'text-gray-700 hover:bg-gray-50'
                                                         }`}
                                                 >
                                                     {status}
@@ -107,8 +107,8 @@ export default function AdminListTransaksi() {
                                                     key={method}
                                                     onClick={() => setFilterMethod(method)}
                                                     className={`w-full text-left px-3 py-1.5 rounded-lg transition text-sm font-medium ${filterMethod === method
-                                                            ? 'bg-blue-50 text-blue-700'
-                                                            : 'text-gray-700 hover:bg-gray-50'
+                                                        ? 'bg-blue-50 text-blue-700'
+                                                        : 'text-gray-700 hover:bg-gray-50'
                                                         }`}
                                                 >
                                                     {method}
@@ -162,8 +162,8 @@ export default function AdminListTransaksi() {
                                 <div className="col-span-1 text-center text-gray-600">{detail.method}</div>
                                 <div className="col-span-1 text-center">
                                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${detail.status === 'Success' ? 'bg-green-100 text-green-700' :
-                                            detail.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                'bg-red-100 text-red-700'
+                                        detail.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                                            'bg-red-100 text-red-700'
                                         }`}>
                                         {detail.status}
                                     </span>
@@ -195,11 +195,11 @@ export default function AdminListTransaksi() {
                 {/* Mobile Card View - Shown on Mobile/Tablet */}
                 <div className="lg:hidden space-y-3">
                     {/* Table Header - Mobile */}
-                    <div className="bg-white rounded-xl p-3 grid grid-cols-4 gap-2 font-bold text-gray-800 text-xs border border-gray-200">
-                        <div>NAMA/PRODUK</div>
-                        <div className="text-center">NOMINAL</div>
-                        <div className="text-center">STATUS</div>
-                        <div className="text-center">AKSI</div>
+                    <div className="bg-white rounded-xl p-3 grid grid-cols-12 gap-2 font-bold text-gray-800 text-xs border border-gray-200">
+                        <div className="col-span-5">NAMA/PRODUK</div>
+                        <div className="col-span-3 text-center">NOMINAL</div>
+                        <div className="col-span-2 text-center">STATUS</div>
+                        <div className="col-span-2 text-center">AKSI</div>
                     </div>
 
                     {/* Transaction Cards */}
@@ -209,23 +209,23 @@ export default function AdminListTransaksi() {
                                 key={detail.id}
                                 className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm hover:shadow-md transition"
                             >
-                                <div className="grid grid-cols-4 gap-3 items-center">
+                                <div className="grid grid-cols-12 gap-2 items-center">
                                     {/* Name & Product Info */}
-                                    <div className="min-w-0">
+                                    <div className="col-span-5 min-w-0">
                                         <p className="text-xs font-bold text-gray-500 mb-0.5">{index + 1}. {detail.trxId}</p>
                                         <p className="font-bold text-sm text-gray-800 truncate">{detail.name}</p>
                                         <p className="text-xs text-gray-600 truncate">{detail.product}</p>
                                     </div>
 
                                     {/* Nominal */}
-                                    <div className="text-center">
-                                        <p className="font-bold text-sm text-green-600">{detail.nominal}</p>
-                                        <p className="text-xs text-gray-500 mt-0.5">{detail.method}</p>
+                                    <div className="col-span-3 text-center">
+                                        <p className="font-bold text-xs text-green-600 leading-tight">{detail.nominal}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5 truncate">{detail.method}</p>
                                     </div>
 
                                     {/* Status */}
-                                    <div className="flex justify-center">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${detail.status === 'Success' ? 'bg-green-100 text-green-700' :
+                                    <div className="col-span-2 flex justify-center">
+                                        <span className={`px-1.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${detail.status === 'Success' ? 'bg-green-100 text-green-700' :
                                                 detail.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
                                                     'bg-red-100 text-red-700'
                                             }`}>
@@ -234,9 +234,9 @@ export default function AdminListTransaksi() {
                                     </div>
 
                                     {/* Action */}
-                                    <div className="flex justify-center">
-                                        <button className="p-2 text-gray-700 hover:text-blue-600 transition hover:scale-110 active:scale-90 bg-white rounded-lg shadow-sm border border-gray-100">
-                                            <EditOutlined className="text-lg" />
+                                    <div className="col-span-2 flex justify-center">
+                                        <button className="p-1.5 text-gray-700 hover:text-blue-600 transition hover:scale-110 active:scale-90 bg-white rounded-lg shadow-sm border border-gray-100">
+                                            <EditOutlined className="text-base" />
                                         </button>
                                     </div>
                                 </div>
