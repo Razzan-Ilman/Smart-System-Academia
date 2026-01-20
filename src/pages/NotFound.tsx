@@ -60,7 +60,7 @@ export default function NotFound() {
                 <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
                     <button
                         onClick={() => navigate(-1)}
-                        className="group px-7 py-3 bg-white text-gray-700 rounded-xl font-medium border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg relative overflow-hidden"
+                        className="group px-7 py-3 bg-white text-gray-600 rounded-xl font-medium border-2 border-gray-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 transition-all duration-300 flex items-center gap-2 shadow-sm hover:shadow-md relative overflow-hidden"
                     >
                         <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -74,7 +74,7 @@ export default function NotFound() {
 
                     <button
                         onClick={() => navigate('/')}
-                        className="group px-7 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-pink-600 transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-xl relative overflow-hidden"
+                        className="group px-7 py-3 bg-gradient-to-r from-purple-400 to-pink-400 text-white rounded-xl font-medium hover:from-purple-500 hover:to-pink-500 transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg relative overflow-hidden"
                     >
                         <HomeOutlined className="text-base group-hover:scale-110 transition-transform duration-300" />
                         Pulang Yuk
