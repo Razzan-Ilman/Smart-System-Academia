@@ -86,23 +86,26 @@ export default function AdminProduk() {
     ];
 
     return (
-        <div className="space-y-6">
-            <div className="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-6">
+        <div className="space-y-4 md:space-y-6">
+            <div className="bg-white rounded-2xl md:rounded-[1.5rem] shadow-sm border border-gray-100 p-4 md:p-6">
                 {/* Header */}
-                <div className="flex items-center gap-3 mb-10">
-                    <ShoppingOutlined className="text-2xl" />
-                    <h1 className="text-2xl font-bold">Produk</h1>
+                <div className="flex items-center gap-3 mb-6 md:mb-10">
+                    <ShoppingOutlined className="text-xl md:text-2xl" />
+                    <h1 className="text-xl md:text-2xl font-bold">Produk</h1>
                 </div>
 
-                {/* Toolbar */}
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
+                {/* Toolbar - Responsive */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
+                    {/* Filter & Search Row */}
+                    <div className="flex items-center gap-2 sm:gap-4 flex-1">
                         <div className="relative">
                             <button
                                 onClick={() => setShowFilter(!showFilter)}
-                                className={`px-6 py-2 border border-gray-200 rounded-xl flex items-center gap-2 font-semibold transition shadow-sm ${sortType !== "Default" ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-white text-gray-700 hover:bg-gray-50"}`}
+                                className={`px-4 md:px-6 py-2 border border-gray-200 rounded-xl flex items-center gap-2 font-semibold transition shadow-sm text-sm md:text-base whitespace-nowrap ${sortType !== "Default" ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-white text-gray-700 hover:bg-gray-50"
+                                    }`}
                             >
-                                <FilterOutlined /> {sortType === "Default" ? "Filter" : sortType}
+                                <FilterOutlined /> <span className="hidden sm:inline">{sortType === "Default" ? "Filter" : sortType}</span>
+                                <span className="sm:hidden">Filter</span>
                             </button>
 
                             {showFilter && (
@@ -123,27 +126,28 @@ export default function AdminProduk() {
                             )}
                         </div>
 
-                        <div className="relative group">
+                        <div className="relative group flex-1">
                             <input
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Ketik...."
-                                className="pl-4 pr-10 py-2 bg-[#f3f4f9] rounded-full w-80 focus:outline-none focus:ring-1 focus:ring-blue-300 transition-all shadow-inner"
+                                className="pl-4 pr-10 py-2 bg-[#f3f4f9] rounded-full w-full focus:outline-none focus:ring-1 focus:ring-blue-300 transition-all shadow-inner text-sm md:text-base"
                             />
-                            <SearchOutlined className="absolute right-4 top-3 text-gray-400 group-hover:text-blue-500 cursor-pointer transition-colors" />
+                            <SearchOutlined className="absolute right-4 top-2.5 md:top-3 text-gray-400 group-hover:text-blue-500 cursor-pointer transition-colors" />
                         </div>
                     </div>
 
+                    {/* Tambah Button */}
                     <button
                         onClick={() => navigate("/admin/produk/tambah")}
-                        className="px-6 py-2 bg-[#2ecc71] text-white rounded-xl font-bold flex items-center gap-2 hover:bg-[#27ae60] transition shadow-md active:scale-95"
+                        className="px-4 md:px-6 py-2 bg-[#2ecc71] text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#27ae60] transition shadow-md active:scale-95 text-sm md:text-base whitespace-nowrap"
                     >
                         + Tambah
                     </button>
                 </div>
 
-                {/* Table Container */}
-                <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                {/* Desktop Table View - Hidden on Mobile */}
+                <div className="hidden lg:block border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
                     {/* Table Header */}
                     <div className="grid grid-cols-12 bg-[#c9d4fb] font-bold p-3 text-gray-800">
                         <div className="col-span-1 pl-4">No</div>
@@ -205,6 +209,66 @@ export default function AdminProduk() {
                             </div>
                         ))
                     }
+                </div>
+
+                {/* Mobile Card View - Shown on Mobile/Tablet */}
+                <div className="lg:hidden space-y-3">
+                    {/* Table Header - Mobile */}
+                    <div className="bg-[#c9d4fb] rounded-xl p-3 grid grid-cols-3 gap-2 font-bold text-gray-800 text-sm">
+                        <div>Nama Produk</div>
+                        <div className="text-center">Harga</div>
+                        <div className="text-center">Edit/Hapus</div>
+                    </div>
+
+                    {/* Product Cards */}
+                    {filteredProducts.length > 0 ? (
+                        filteredProducts.map((item, index) => (
+                            <div
+                                key={item.id}
+                                className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm hover:shadow-md transition"
+                            >
+                                <div className="grid grid-cols-3 gap-3 items-center">
+                                    {/* Product Info */}
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-gray-500 flex-shrink-0">{index + 1}.</span>
+                                        <img
+                                            src={item.image}
+                                            alt={item.title}
+                                            className="w-10 h-10 rounded-lg object-cover shadow-sm border border-gray-100 flex-shrink-0"
+                                        />
+                                        <div className="min-w-0">
+                                            <p className="font-bold text-sm text-gray-800 truncate">{item.title}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Price */}
+                                    <div className="text-center">
+                                        <p className="font-bold text-sm text-gray-800">{item.price}</p>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex items-center justify-center gap-2">
+                                        <button
+                                            onClick={() => navigate(`/admin/produk/edit/${item.id}`)}
+                                            className="p-2 text-gray-700 hover:text-blue-600 transition hover:scale-110"
+                                        >
+                                            <EditOutlined className="text-lg" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteClick(item.id)}
+                                            className="p-2 text-gray-700 hover:text-red-500 transition hover:scale-110"
+                                        >
+                                            <DeleteOutlined className="text-lg" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="p-10 text-center text-gray-400 font-medium bg-white rounded-xl border border-gray-200">
+                            Data produk "{search}" tidak ditemukan
+                        </div>
+                    )}
                 </div>
             </div>
 
