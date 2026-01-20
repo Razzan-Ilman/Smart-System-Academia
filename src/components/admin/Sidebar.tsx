@@ -85,8 +85,8 @@ export default function SidebarHome() {
               to={item.path}
               onClick={closeMobileMenu}
               className={`flex items-center gap-3 px-4 py-2 rounded-lg transition ${isActive(item.path)
-                  ? "bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.9)] ring-2 ring-blue-300"
-                  : "hover:bg-white/20"
+                ? "bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.9)] ring-2 ring-blue-300"
+                : "hover:bg-white/20"
                 }`}
             >
               {item.icon}
@@ -102,13 +102,14 @@ export default function SidebarHome() {
             Log Out
           </button>
         </nav>
-
-        <ConfirmModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onConfirm={handleConfirmLogout}
-        />
       </aside>
+
+      {/* Modal at root level - not inside sidebar */}
+      <ConfirmModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={handleConfirmLogout}
+      />
     </>
   );
 }

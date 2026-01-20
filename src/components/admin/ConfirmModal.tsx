@@ -21,7 +21,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" style={{ margin: 0, left: 0, right: 0, top: 0, bottom: 0 }}>
             <div className="bg-white rounded-2xl md:rounded-[2rem] w-full max-w-[280px] sm:max-w-sm p-6 md:p-8 shadow-2xl transform transition-all animate-in fade-in zoom-in duration-200">
                 <div className="flex flex-col items-center">
                     {/* Icon - Responsive Size */}
