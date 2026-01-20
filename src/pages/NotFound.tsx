@@ -4,19 +4,19 @@ import { useState, useEffect } from 'react';
 
 export default function NotFound() {
     const navigate = useNavigate();
-    const [foxEyes, setFoxEyes] = useState({ left: 0, right: 0 });
+    const [pandaEyes, setPandaEyes] = useState({ left: 0, right: 0 });
     const [catEyes, setCatEyes] = useState({ left: 0, right: 0 });
     const [isBlinking, setIsBlinking] = useState(false);
-    const [tailWag, setTailWag] = useState(0);
+    const [pandaTailWag, setPandaTailWag] = useState(0);
     const [earWiggle, setEarWiggle] = useState(0);
     const [catTailWag, setCatTailWag] = useState(0);
 
-    // Fox and Cat eyes follow mouse
+    // Panda and Cat eyes follow mouse
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
-            const foxEyeMovement = ((e.clientX / window.innerWidth) - 0.5) * 8;
+            const pandaEyeMovement = ((e.clientX / window.innerWidth) - 0.5) * 6;
             const catEyeMovement = ((e.clientX / window.innerWidth) - 0.5) * 10;
-            setFoxEyes({ left: foxEyeMovement, right: foxEyeMovement });
+            setPandaEyes({ left: pandaEyeMovement, right: pandaEyeMovement });
             setCatEyes({ left: catEyeMovement, right: catEyeMovement });
         };
         window.addEventListener('mousemove', handleMouseMove);
@@ -32,11 +32,11 @@ export default function NotFound() {
         return () => clearInterval(blinkInterval);
     }, []);
 
-    // Tail wagging
+    // Panda tail wagging
     useEffect(() => {
         const wagInterval = setInterval(() => {
-            setTailWag(prev => (prev + 1) % 4);
-        }, 400);
+            setPandaTailWag((prev: number) => (prev + 1) % 2);
+        }, 800);
         return () => clearInterval(wagInterval);
     }, []);
 
@@ -65,11 +65,11 @@ export default function NotFound() {
 
             <div className="text-center max-w-2xl relative z-10">
                 {/* 404 Number - Minimalist with gradient */}
-                <h1 className="text-[120px] md:text-[160px] font-black bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-600 bg-clip-text text-transparent leading-none mb-4">
+                <h1 className="text-[120px] md:text-[160px] font-black bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 bg-clip-text text-transparent leading-none mb-4">
                     404
                 </h1>
 
-                {/* Fox & Cat Mascots */}
+                {/* Panda & Cat Mascots */}
                 <div className="mb-8 flex justify-center items-end gap-8">
                     {/* Cat Mascot */}
                     <div className="relative">
@@ -157,15 +157,15 @@ export default function NotFound() {
                         </svg>
                     </div>
 
-                    {/* Fox Mascot */}
+                    {/* Panda Mascot */}
                     <div className="relative">
-                        {/* Fox SVG */}
+                        {/* Panda SVG */}
                         <svg width="220" height="220" viewBox="0 0 220 220" className="drop-shadow-2xl">
                             {/* Tail */}
                             <g
                                 className="transition-all duration-300"
                                 style={{
-                                    transform: `rotate(${tailWag * 3 - 6}deg)`,
+                                    transform: `rotate(${pandaTailWag * 3 - 6}deg)`,
                                     transformOrigin: '170px 130px',
                                 }}
                             >
@@ -227,7 +227,7 @@ export default function NotFound() {
                                 {/* Left Eye */}
                                 <ellipse cx="95" cy="85" rx="7" ry="10" fill="#1f2937" />
                                 <circle
-                                    cx={95 + foxEyes.left}
+                                    cx={95 + pandaEyes.left}
                                     cy="85"
                                     r="2.5"
                                     fill="white"
@@ -237,7 +237,7 @@ export default function NotFound() {
                                 {/* Right Eye */}
                                 <ellipse cx="125" cy="85" rx="7" ry="10" fill="#1f2937" />
                                 <circle
-                                    cx={125 + foxEyes.right}
+                                    cx={125 + pandaEyes.right}
                                     cy="85"
                                     r="2.5"
                                     fill="white"
@@ -278,7 +278,7 @@ export default function NotFound() {
                         </svg>
 
                         {/* Floating "?" with gradient */}
-                        <div className="absolute -right-8 top-8 text-5xl font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent animate-bounce">
+                        <div className="absolute -right-8 top-8 text-5xl font-bold bg-gradient-to-r from-gray-600 to-gray-800 bg-clip-text text-transparent animate-bounce">
                             ?
                         </div>
                     </div>
@@ -286,11 +286,11 @@ export default function NotFound() {
 
                 {/* Message */}
                 <div className="space-y-2 mb-8">
-                    <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-orange-700 to-amber-700 bg-clip-text text-transparent">
+                    <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-gray-700 to-gray-900 bg-clip-text text-transparent">
                         Halaman Tidak Ditemukan
                     </h2>
                     <p className="text-base text-gray-700">
-                        Rubah dan kucing kami sudah mencari ke mana-mana, tapi tidak menemukan halaman yang Anda cari
+                        Panda dan kucing kami sudah mencari ke mana-mana, tapi tidak menemukan halaman yang Anda cari
                     </p>
                 </div>
 
@@ -298,7 +298,7 @@ export default function NotFound() {
                 <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
                     <button
                         onClick={() => navigate(-1)}
-                        className="group px-6 py-2.5 bg-white text-orange-700 rounded-lg font-medium border-2 border-orange-600 hover:bg-orange-600 hover:text-white transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg"
+                        className="group px-6 py-2.5 bg-white text-gray-700 rounded-lg font-medium border-2 border-gray-600 hover:bg-gray-600 hover:text-white transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg"
                     >
                         <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -308,7 +308,7 @@ export default function NotFound() {
 
                     <button
                         onClick={() => navigate('/')}
-                        className="group px-6 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg font-medium hover:from-orange-700 hover:to-amber-700 transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg"
+                        className="group px-6 py-2.5 bg-gradient-to-r from-gray-700 to-gray-900 text-white rounded-lg font-medium hover:from-gray-800 hover:to-black transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg"
                     >
                         <HomeOutlined className="text-base" />
                         Ke Beranda
@@ -316,8 +316,8 @@ export default function NotFound() {
                 </div>
 
                 {/* Fun fact */}
-                <p className="mt-8 text-sm text-orange-600/70 italic">
-                    🦊🐱 Tip: Gerakkan mouse Anda dan lihat mata mereka!
+                <p className="mt-8 text-sm text-gray-600/70 italic">
+                    🐼🐱 Tip: Gerakkan mouse Anda dan lihat mata mereka!
                 </p>
             </div>
         </div>
