@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import icon2 from "../../images/icon2.png";
 import { Link, useNavigate } from "react-router-dom";
-import api from "../../service/api";
+import { authService } from "../../services/adminService";
+import { toast } from "sonner";
 
 const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
@@ -11,53 +12,29 @@ const AdminLogin: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ==========================
-  // HANDLE LOGIN SESUAI API SSA
-  // ==========================
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      const res = await api.post("/user/login", {
-        email,
-        password,
-      });
+      const data = await authService.login(email, password);
 
-      // 🔥 AMBIL TOKEN DENGAN BERBAGAI KEMUNGKINAN
-      const accessToken =
-        res.data?.access_token ||
-        res.data?.data?.access_token ||
-        res.data?.token ||
-        res.data?.data?.token;
-
-      const refreshToken =
-        res.data?.refresh_token ||
-        res.data?.data?.refresh_token;
-
-      if (!accessToken) {
-        console.log("Response API:", res.data);
-        throw new Error("Token tidak ditemukan dari API");
+      // authService already handles token storage to 'admin_token'
+      // but if we also want 'token' for other parts of the app:
+      const token = data?.access_token || data?.data?.access_token || data?.token || data?.data?.token;
+      if (token) {
+        localStorage.setItem("token", token);
       }
 
-      // SIMPAN TOKEN
-      localStorage.setItem("token", accessToken);
-
-      if (refreshToken) {
-        localStorage.setItem("refresh_token", refreshToken);
-      }
-
+      toast.success("Login berhasil!");
       navigate("/admin/dashboard");
 
     } catch (err: any) {
       console.log("Error login:", err);
-
-      setError(
-        err?.response?.data?.message ||
-        err?.message ||
-        "Login gagal"
-      );
+      const errorMessage = err?.response?.data?.message || err?.message || "Login gagal";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -1,31 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle2, Copy, Download, Home } from 'lucide-react';
 
+import { useLocation } from 'react-router-dom';
+
 const PaymentSuccess = () => {
+  const location = useLocation();
   const [copied, setCopied] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
 
-  // Sample data - in real app, get from props or context
-  const orderNumber = 'ORD-1768804250238';
-  const totalAmount = 380000;
-  const buyerEmail = 'zaidan@gmail.com';
-  
-  const cartItems = [
-    {
-      id: 1,
-      name: 'Nama Produk',
-      image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200',
-      price: 150000,
-      quantity: 1
-    },
-    {
-      id: 2,
-      name: 'Nama Produk',
-      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200',
-      price: 230000,
-      quantity: 1
-    }
-  ];
+  // Get data from payment previous page
+  const { amount, email, items } = location.state || {};
+
+  const totalAmount = amount || 380000;
+  const buyerEmail = email || 'zaidan@gmail.com';
+  const cartItems = items || [];
 
   const downloadLink = `https://youtu.be/ks4uigFnG-U?si=Vmx2TKk_WZa8p_rx`;
 
@@ -33,7 +21,7 @@ const PaymentSuccess = () => {
     setShowAnimation(true);
   }, []);
 
-  const formatRupiah = (value) =>
+  const formatRupiah = (value: number) =>
     new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -50,7 +38,7 @@ const PaymentSuccess = () => {
     <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 relative overflow-hidden p-4">
       {/* Decorative Elements */}
       <div className="absolute top-0 left-0 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{animationDelay: '1s'}}></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{ animationDelay: '1s' }}></div>
 
       {/* Main Content */}
       <div className="relative z-10 max-w-2xl mx-auto py-12">
@@ -62,13 +50,13 @@ const PaymentSuccess = () => {
             <div className="absolute inset-0 animate-ping">
               <div className="w-32 h-32 rounded-full bg-green-400 opacity-20"></div>
             </div>
-            <div className="absolute inset-0 animate-pulse" style={{animationDelay: '0.3s'}}>
+            <div className="absolute inset-0 animate-pulse" style={{ animationDelay: '0.3s' }}>
               <div className="w-32 h-32 rounded-full bg-green-300 opacity-30"></div>
             </div>
-            
+
             {/* Success circle with checkmark */}
             <div className="relative w-32 h-32 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-2xl">
-              <CheckCircle2 className="w-16 h-16 text-white animate-bounce" style={{animationDuration: '1s'}} />
+              <CheckCircle2 className="w-16 h-16 text-white animate-bounce" style={{ animationDuration: '1s' }} />
             </div>
           </div>
 
@@ -81,20 +69,26 @@ const PaymentSuccess = () => {
           <div className="p-8">
             {/* Cart Items */}
             <div className="space-y-4 mb-6">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex gap-4 items-center">
-                  <div className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
-                    <img 
-                      src={item.image} 
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                    />
+              {cartItems.map((item: any) => (
+                <div key={item.id} className="flex gap-4 items-center p-4 rounded-2xl bg-gray-50/50 border border-gray-100">
+                  <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center text-3xl shadow-sm overflow-hidden flex-shrink-0 border border-gray-100">
+                    {item.image && item.image.length > 4 ? (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span>{item.image || '📦'}</span>
+                    )}
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800 mb-1">{item.name}</h3>
+                    <h3 className="font-bold text-gray-800 text-sm lg:text-base leading-tight">{item.name}</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">{item.category || 'Product'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-gray-800">{formatRupiah(item.price)}</p>
+                    <p className="font-black text-gray-900">{formatRupiah(item.price)}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase">Qty: {item.quantity || 1}</p>
                   </div>
                 </div>
               ))}
@@ -113,7 +107,7 @@ const PaymentSuccess = () => {
             {/* Download Link */}
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200">
               <h3 className="font-bold text-gray-800 mb-3">Here is Link Your Purchase:</h3>
-              
+
               <div className="bg-white rounded-xl p-4 border-2 border-dashed border-green-300">
                 <div className="flex items-center gap-3">
                   <div className="flex-1 overflow-hidden">
@@ -151,7 +145,7 @@ const PaymentSuccess = () => {
                 <Download className="w-5 h-5" />
                 Open Download Link
               </button>
-              
+
               <button
                 onClick={() => window.location.href = '/'}
                 className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
@@ -175,7 +169,7 @@ const PaymentSuccess = () => {
         {/* Confetti Effect */}
         {showAnimation && (
           <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">
-            {Array.from({length: 50}).map((_, i) => (
+            {Array.from({ length: 50 }).map((_, i) => (
               <div
                 key={i}
                 className="absolute animate-confetti"
@@ -186,7 +180,7 @@ const PaymentSuccess = () => {
                   animationDuration: `${3 + Math.random() * 2}s`
                 }}
               >
-                <div 
+                <div
                   className="w-3 h-3 rounded-full"
                   style={{
                     backgroundColor: ['#f97316', '#ec4899', '#8b5cf6', '#10b981', '#3b82f6'][Math.floor(Math.random() * 5)]

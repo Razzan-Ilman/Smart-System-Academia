@@ -12,8 +12,17 @@ const axiosInstance = axios.create({
 // Request interceptor
 axiosInstance.interceptors.request.use(
     (config) => {
+        // Log request URL for debugging
+        console.log('--- AXIOS REQUEST ---');
+        console.log('Method:', config.method?.toUpperCase());
+        console.log('BaseURL:', config.baseURL);
+        console.log('URL:', config.url);
+        console.log('Full URL:', config.baseURL + (config.url?.startsWith('/') ? config.url : '/' + config.url));
+        console.log('Request Headers:', JSON.stringify(config.headers, null, 2));
+        console.log('Request Data:', JSON.stringify(config.data, null, 2));
+
         // Add auth token if exists
-        const token = localStorage.getItem('admin_token');
+        const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }

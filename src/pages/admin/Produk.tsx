@@ -7,63 +7,90 @@ import {
     SearchOutlined,
     FilterOutlined,
 } from "@ant-design/icons";
+import { toast } from "sonner";
 import ConfirmModal from "../../components/admin/ConfirmModal";
-
-// Import images
-import Produk1 from "../../images/Produk1.jpg";
-import Produk2 from "../../images/Produk2.jpg";
+import { productService } from "../../services/adminService";
+import type { Product as APIProduct } from "../../services/adminService";
 
 interface Product {
-    id: number;
+    id: string;
     image: string;
     title: string;
+    name: string;
     price: string;
     priceValue: number;
     date: string;
 }
 
-const DEFAULT_PRODUCTS: Product[] = [
-    { id: 1, image: Produk1, title: "Produk Unggulan A", price: "Rp 50.000", priceValue: 50000, date: "2024-01-10" },
-    { id: 2, image: Produk2, title: "Produk Premium B", price: "Rp 75.000", priceValue: 75000, date: "2024-01-12" },
-    { id: 3, image: Produk1, title: "Paket Belajar C", price: "Rp 120.000", priceValue: 120000, date: "2024-01-05" },
-    { id: 4, image: Produk2, title: "Kursus Intensif D", price: "Rp 200.000", priceValue: 200000, date: "2024-01-15" },
-    { id: 5, image: Produk1, title: "E-Book Eksklusif E", price: "Rp 35.000", priceValue: 35000, date: "2024-01-08" },
-];
-
 export default function AdminProduk() {
     const navigate = useNavigate();
     const [products, setProducts] = useState<Product[]>([]);
-
-    useEffect(() => {
-        const saved = localStorage.getItem("admin_products");
-        if (saved) {
-            setProducts(JSON.parse(saved));
-        } else {
-            setProducts(DEFAULT_PRODUCTS);
-            localStorage.setItem("admin_products", JSON.stringify(DEFAULT_PRODUCTS));
-        }
-    }, []);
-
+    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [showFilter, setShowFilter] = useState(false);
     const [sortType, setSortType] = useState<string>("Default");
 
     // Delete State
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [productToDelete, setProductToDelete] = useState<number | null>(null);
+    const [productToDelete, setProductToDelete] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
-    const handleDeleteClick = (id: number) => {
+    // Fetch products from API
+    useEffect(() => {
+        fetchProducts();
+    }, []);
+
+    const fetchProducts = async () => {
+        try {
+            setLoading(true);
+            const data = await productService.getAll();
+
+            // Transform API data to match UI format
+            const transformedProducts = data.map((product: APIProduct) => ({
+                id: product.id || '',
+                image: product.images && product.images.length > 0 ? product.images[0] : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop',
+                title: product.name,
+                name: product.name,
+                price: `Rp ${product.price.toLocaleString('id-ID')}`,
+                priceValue: product.price,
+                date: new Date().toISOString().split('T')[0] // Use current date if not provided
+            }));
+
+            setProducts(transformedProducts);
+        } catch (error) {
+            console.error('Failed to fetch products:', error);
+            toast.error('Gagal memuat produk');
+            // Fallback to empty array on error
+            setProducts([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteClick = (id: string) => {
         setProductToDelete(id);
         setIsDeleteModalOpen(true);
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (productToDelete !== null) {
-            const updatedProducts = products.filter(p => p.id !== productToDelete);
-            setProducts(updatedProducts);
-            localStorage.setItem("admin_products", JSON.stringify(updatedProducts));
-            setIsDeleteModalOpen(false);
-            setProductToDelete(null);
+            try {
+                setDeleting(true);
+                await productService.delete(productToDelete);
+
+                // Update local state
+                const updatedProducts = products.filter(p => p.id !== productToDelete);
+                setProducts(updatedProducts);
+
+                toast.success('Produk berhasil dihapus');
+                setIsDeleteModalOpen(false);
+                setProductToDelete(null);
+            } catch (error) {
+                console.error('Failed to delete product:', error);
+                toast.error('Gagal menghapus produk');
+            } finally {
+                setDeleting(false);
+            }
         }
     };
 
@@ -84,6 +111,17 @@ export default function AdminProduk() {
         "Terbaru",
         "Terlama"
     ];
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-500">Memuat produk...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-4 md:space-y-6">
@@ -278,6 +316,7 @@ export default function AdminProduk() {
                 onConfirm={confirmDelete}
                 title="Hapus Produk?"
                 confirmText="Ya, Hapus"
+                isLoading={deleting}
             />
         </div>
     );

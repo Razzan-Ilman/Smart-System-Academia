@@ -1,28 +1,30 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { categoryService } from "../../services/adminService";
 
 export default function AdminTambahKategori() {
     const navigate = useNavigate();
     const [name, setName] = useState("");
+    const [saving, setSaving] = useState(false);
 
-    const handleSave = () => {
-        if (!name.trim()) return;
+    const handleSave = async () => {
+        if (!name.trim()) {
+            alert("Nama kategori wajib diisi");
+            return;
+        }
 
-        const saved = localStorage.getItem("admin_categories");
-        const categories = saved ? JSON.parse(saved) : [
-            { id: 1, name: "Kelas" },
-            { id: 2, name: "Course" }
-        ];
-
-        const newCategory = {
-            id: Date.now(),
-            name: name
-        };
-
-        const updatedCategories = [...categories, newCategory];
-        localStorage.setItem("admin_categories", JSON.stringify(updatedCategories));
-
-        navigate("/admin/kategori-produk");
+        try {
+            setSaving(true);
+            await categoryService.create({ name: name.trim() });
+            toast.success('Kategori berhasil ditambahkan');
+            navigate("/admin/kategori-produk");
+        } catch (error) {
+            console.error('Failed to create category:', error);
+            toast.error('Gagal menambahkan kategori');
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (

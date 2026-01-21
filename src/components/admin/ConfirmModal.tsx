@@ -8,6 +8,7 @@ interface ConfirmModalProps {
     title?: string;
     cancelText?: string;
     confirmText?: string;
+    isLoading?: boolean;
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -17,6 +18,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     title = "Anda Yakin?",
     cancelText = "Batal",
     confirmText = "Ya Logout",
+    isLoading = false,
 }) => {
     if (!isOpen) return null;
 
@@ -36,15 +38,17 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                     <div className="flex gap-3 md:gap-4 w-full">
                         <button
                             onClick={onClose}
-                            className="flex-1 py-2.5 md:py-3 bg-[#8e99c5] hover:bg-[#7a85af] text-white rounded-xl font-bold text-sm md:text-lg transition shadow-lg active:scale-95"
+                            disabled={isLoading}
+                            className="flex-1 py-2.5 md:py-3 bg-[#8e99c5] hover:bg-[#7a85af] text-white rounded-xl font-bold text-sm md:text-lg transition shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {cancelText}
                         </button>
                         <button
                             onClick={onConfirm}
-                            className="flex-1 py-2.5 md:py-3 bg-[#dc6581] hover:bg-[#c9516d] text-white rounded-xl font-bold text-sm md:text-lg transition shadow-lg active:scale-95"
+                            disabled={isLoading}
+                            className="flex-1 py-2.5 md:py-3 bg-[#dc6581] hover:bg-[#c9516d] text-white rounded-xl font-bold text-sm md:text-lg transition shadow-lg active:scale-95 disabled:bg-gray-400 disabled:cursor-not-allowed"
                         >
-                            {confirmText}
+                            {isLoading ? '...' : confirmText}
                         </button>
                     </div>
                 </div>

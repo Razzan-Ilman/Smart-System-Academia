@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { categoryService } from "../../services/adminService";
+import type { Category as APICategory } from "../../services/adminService";
 
 interface Category {
     id: number;
@@ -10,32 +13,62 @@ export default function AdminEditKategori() {
     const navigate = useNavigate();
     const { id } = useParams();
     const [name, setName] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        const saved = localStorage.getItem("admin_categories");
-        if (saved && id) {
-            const categories = JSON.parse(saved);
-            const category = categories.find((c: Category) => c.id.toString() === id);
-            if (category) {
+        if (!id) {
+            navigate("/admin/kategori-produk");
+            return;
+        }
+
+        const fetchCategory = async () => {
+            try {
+                setLoading(true);
+                const category: APICategory = await categoryService.getById(parseInt(id));
                 setName(category.name);
+                setLoading(false);
+            } catch (error) {
+                console.error('Failed to fetch category:', error);
+                toast.error('Gagal memuat data kategori');
+                navigate("/admin/kategori-produk");
             }
-        }
-    }, [id]);
+        };
 
-    const handleSave = () => {
-        if (!name.trim()) return;
+        fetchCategory();
+    }, [id, navigate]);
 
-        const saved = localStorage.getItem("admin_categories");
-        if (saved && id) {
-            const categories = JSON.parse(saved);
-            const updatedCategories = categories.map((c: Category) =>
-                c.id.toString() === id ? { ...c, name: name } : c
-            );
-            localStorage.setItem("admin_categories", JSON.stringify(updatedCategories));
+    const handleSave = async () => {
+        if (!name.trim()) {
+            alert("Nama kategori wajib diisi");
+            return;
         }
 
-        navigate("/admin/kategori-produk");
+        if (!id) return;
+
+        try {
+            setSaving(true);
+            await categoryService.update(parseInt(id), { name: name.trim() });
+            toast.success('Kategori berhasil diperbarui');
+            navigate("/admin/kategori-produk");
+        } catch (error) {
+            console.error('Failed to update category:', error);
+            toast.error('Gagal memperbarui kategori');
+        } finally {
+            setSaving(false);
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-500">Memuat kategori...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 max-w-xl mx-auto">

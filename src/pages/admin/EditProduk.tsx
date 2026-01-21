@@ -1,95 +1,139 @@
 import { useState, useEffect, useRef } from "react";
 import {
-    PictureOutlined,
     PlusOutlined,
     DeleteOutlined,
     EditOutlined,
     CloseCircleOutlined
 } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import RichTextEditor from "../../components/RichTextEditor";
-import AddOnModal from "../../components/AddOnModal";
+import { productService } from "../../services/adminService";
+import type { Product as APIProduct } from "../../services/adminService";
 import '../../styles/rich-text-editor.css';
 
-// Simple helper to format price
-const formatPrice = (value: number) => {
-    return `Rp ${value.toLocaleString('id-ID')}`;
-};
-
-interface Product {
-    id: number;
-    image: string;
-    title: string;
-    price: string;
-    priceValue: number;
-    date: string;
-    description?: string;
-    platformLink?: string;
-    category?: string;
-    limit?: string | null;
+// TypeScript Interface - Sesuai Kontrak API
+interface AddOn {
+    name: string;
+    price: number;
+    link_add_ons: string;
 }
+
+interface UpdateProductPayload {
+    name: string;
+    description: string;
+    link_product: string;
+    price: number;
+    stock: number;
+    category_id: number;
+}
+
+// Category mapping
+const CATEGORIES = [
+    { id: 1, name: "Course", platform: "Google Drive" },
+    { id: 2, name: "Kelas", platform: "WhatsApp" }
+];
 
 export default function AdminEditProduk() {
     const navigate = useNavigate();
     const { id } = useParams();
-    const [isLimitQuantity, setIsLimitQuantity] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Form State
-    const [title, setTitle] = useState("");
-    const [price, setPrice] = useState(""); // Input as string
+    // Form State - Sesuai Kontrak API
+    const [name, setName] = useState("");
+    const [price, setPrice] = useState<number>(0);
     const [description, setDescription] = useState("");
-    const [platformLink, setPlatformLink] = useState("");
-    const [category, setCategory] = useState("");
-    const [limit, setLimit] = useState("");
-    const [images, setImages] = useState<string[]>([]); // Store base64 images
-    const [originalImage, setOriginalImage] = useState("");
+    const [linkProduct, setLinkProduct] = useState("");
+    const [categoryId, setCategoryId] = useState<number>(0);
+    const [stock, setStock] = useState<number>(0);
+    const [images, setImages] = useState<string[]>([]);
+    const [addOns, setAddOns] = useState<AddOn[]>([]);
+
+    // UI State
     const [platformError, setPlatformError] = useState("");
-
-    // Add-ons State
-    const [addOns, setAddOns] = useState<Array<{ id: number, title: string, price: string }>>([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [isAddOnModalOpen, setIsAddOnModalOpen] = useState(false);
-    const [editingAddOn, setEditingAddOn] = useState<{ id: number, title: string, price: string } | null>(null);
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [tempAddOn, setTempAddOn] = useState<AddOn>({ name: "", price: 0, link_add_ons: "" });
 
+    // Load existing product data from API
     useEffect(() => {
-        const saved = localStorage.getItem("admin_products");
-        if (saved && id) {
-            const products = JSON.parse(saved);
-            const product = products.find((p: Product) => p.id.toString() === id);
+        if (!id) {
+            navigate("/admin/produk");
+            return;
+        }
 
-            if (product) {
-                setTitle(product.title);
-                setPrice(product.priceValue.toString());
-                setDescription(product.description || "");
-                setPlatformLink(product.platformLink || "");
-                setCategory(product.category || "");
-                setOriginalImage(product.image);
+        const fetchProduct = async () => {
+            try {
+                setLoading(true);
+                const product: APIProduct = await productService.getById(id);
 
-                // Load existing images
-                if (product.images && Array.isArray(product.images)) {
-                    setImages(product.images);
-                } else if (product.image) {
-                    // If only single image exists, add it to images array
-                    setImages([product.image]);
-                }
+                setName(product.name);
+                setPrice(product.price);
+                setDescription(product.description);
+                setLinkProduct(product.link_product);
+                setCategoryId(product.category_id);
+                setStock(product.stock || 0);
+                setAddOns(product.add_ons || []);
+                setImages(product.images || []);
 
-                if (product.limit) {
-                    setIsLimitQuantity(true);
-                    setLimit(product.limit);
-                }
-            } else {
-                // If ID not found, maybe redirect
+                setLoading(false);
+            } catch (error) {
+                console.error('Failed to fetch product:', error);
+                toast.error('Gagal memuat data produk');
                 navigate("/admin/produk");
             }
-        }
+        };
+
+        fetchProduct();
     }, [id, navigate]);
 
-    // Validate platform link based on category
-    const validatePlatformLink = (link: string, cat: string): boolean => {
-        if (!link) return true; // Empty is allowed, will be checked on save
+    // Handle image upload
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
 
-        if (cat === "Course") {
-            // Check if link contains Google Drive patterns
+        Array.from(files).forEach((file) => {
+            if (!file.type.startsWith('image/')) {
+                alert('Hanya file gambar yang diperbolehkan');
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Ukuran file maksimal 5MB');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result as string;
+                setImages(prev => [...prev, base64String]);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const handleDeleteImage = (index: number) => {
+        setImages(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const triggerFileInput = () => {
+        fileInputRef.current?.click();
+    };
+
+    // Validate platform link
+    const validatePlatformLink = (link: string, catId: number): boolean => {
+        if (!link) return true;
+
+        const category = CATEGORIES.find(c => c.id === catId);
+        if (!category) return true;
+
+        if (category.name === "Course") {
             const isValidGdrive = link.includes("drive.google.com") ||
                 link.includes("docs.google.com") ||
                 link.toLowerCase().includes("gdrive");
@@ -97,8 +141,7 @@ export default function AdminEditProduk() {
                 setPlatformError("Link harus berupa Google Drive untuk kategori Course");
                 return false;
             }
-        } else if (cat === "Kelas") {
-            // Check if link contains WhatsApp patterns
+        } else if (category.name === "Kelas") {
             const isValidWA = link.includes("wa.me") ||
                 link.includes("whatsapp.com") ||
                 link.includes("chat.whatsapp");
@@ -112,107 +155,120 @@ export default function AdminEditProduk() {
         return true;
     };
 
-    // Handle platform link change with validation
     const handlePlatformLinkChange = (value: string) => {
-        setPlatformLink(value);
-        if (category) {
-            validatePlatformLink(value, category);
+        setLinkProduct(value);
+        if (categoryId) {
+            validatePlatformLink(value, categoryId);
         }
     };
 
-
-    // Handle Add-on functions
-    const handleAddOnSave = (title: string, price: string) => {
-        if (editingAddOn) {
-            setAddOns(addOns.map(addon =>
-                addon.id === editingAddOn.id
-                    ? { ...addon, title, price }
-                    : addon
-            ));
-            setEditingAddOn(null);
-        } else {
-            const newAddOn = { id: Date.now(), title, price };
-            setAddOns([...addOns, newAddOn]);
-        }
-    };
-
-    const handleEditAddOn = (addon: { id: number, title: string, price: string }) => {
-        setEditingAddOn(addon);
+    // Add-on Modal Handlers
+    const openAddOnModal = () => {
+        setTempAddOn({ name: "", price: 0, link_add_ons: "" });
+        setEditingIndex(null);
         setIsAddOnModalOpen(true);
     };
 
-    const handleDeleteAddOn = (id: number) => {
-        setAddOns(addOns.filter(addon => addon.id !== id));
+    const openEditAddOnModal = (index: number) => {
+        setTempAddOn({ ...addOns[index] });
+        setEditingIndex(index);
+        setIsAddOnModalOpen(true);
+    };
+
+    const handleSaveAddOn = () => {
+        if (!tempAddOn.name || tempAddOn.price <= 0) {
+            alert("Nama dan harga add-on wajib diisi");
+            return;
+        }
+
+        if (editingIndex !== null) {
+            // Update existing
+            const updated = [...addOns];
+            updated[editingIndex] = tempAddOn;
+            setAddOns(updated);
+        } else {
+            // Add new
+            setAddOns([...addOns, tempAddOn]);
+        }
+
+        setIsAddOnModalOpen(false);
+        setTempAddOn({ name: "", price: 0, link_add_ons: "" });
+        setEditingIndex(null);
+    };
+
+    const handleDeleteAddOn = (index: number) => {
+        setAddOns(addOns.filter((_, i) => i !== index));
     };
 
     const handleCloseModal = () => {
         setIsAddOnModalOpen(false);
-        setEditingAddOn(null);
+        setTempAddOn({ name: "", price: 0, link_add_ons: "" });
+        setEditingIndex(null);
     };
 
-    // Handle image upload
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files) return;
-
-        Array.from(files).forEach((file) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const base64 = reader.result as string;
-                setImages((prev) => [...prev, base64]);
-            };
-            reader.readAsDataURL(file);
-        });
-    };
-
-    const handleDeleteImage = (index: number) => {
-        setImages(images.filter((_, i) => i !== index));
-    };
-
-    const handleSave = () => {
-        if (!title || !price) {
-            alert("Judul dan Harga wajib diisi");
+    // Submit Handler - Generate Payload Sesuai Kontrak API Update
+    const handleSave = async () => {
+        // Validation
+        if (!name || price <= 0 || !categoryId) {
+            alert("Nama, harga, dan kategori wajib diisi");
             return;
         }
 
-        const priceNum = parseInt(price);
-        const saved = localStorage.getItem("admin_products");
+        if (!linkProduct) {
+            alert("Link produk wajib diisi");
+            return;
+        }
 
-        if (saved && id) {
-            const products = JSON.parse(saved);
-            const updatedProducts = products.map((p: Product) => {
-                if (p.id.toString() === id) {
-                    return {
-                        ...p,
-                        title: title,
-                        price: formatPrice(priceNum),
-                        priceValue: priceNum,
-                        description,
-                        platformLink,
-                        category,
-                        limit: isLimitQuantity ? limit : null,
-                        image: originalImage // Keep original image
-                    };
-                }
-                return p;
-            });
+        if (!validatePlatformLink(linkProduct, categoryId)) {
+            return;
+        }
 
-            localStorage.setItem("admin_products", JSON.stringify(updatedProducts));
+        if (!id) return;
+
+        // Construct payload IDENTIK dengan kontrak API Update
+        const payload: UpdateProductPayload = {
+            name,
+            description,
+            link_product: linkProduct,
+            price,
+            stock,
+            category_id: categoryId
+        };
+
+        try {
+            setSaving(true);
+            await productService.update(id, payload);
+            toast.success('Produk berhasil diperbarui');
             navigate("/admin/produk");
+        } catch (error) {
+            console.error('Failed to update product:', error);
+            toast.error('Gagal memperbarui produk');
+        } finally {
+            setSaving(false);
         }
     };
 
+    const selectedCategory = CATEGORIES.find(c => c.id === categoryId);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <p className="text-gray-500">Loading...</p>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6 max-w-4xl mx-auto pb-10">
-            {/* Header Content */}
+            {/* Header */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <h1 className="text-2xl font-bold text-gray-800">Edit Produk</h1>
-                <p className="text-sm text-gray-500">Perbarui informasi formulir berikut.</p>
+                <p className="text-sm text-gray-500">Perbarui informasi produk sesuai kontrak API backend.</p>
             </div>
 
             {/* Main Detail Section */}
-            <div className="bg-white rounded-2xl shadow-sm border-2 border-blue-400 p-8 relative overflow-hidden">
-                <h2 className="text-xl font-bold text-gray-500 mb-6">Detail</h2>
+            <div className="bg-white rounded-2xl shadow-sm border-2 border-blue-400 p-8">
+                <h2 className="text-xl font-bold text-gray-500 mb-6">Detail Produk</h2>
 
                 {/* Hidden file input */}
                 <input
@@ -224,42 +280,50 @@ export default function AdminEditProduk() {
                     className="hidden"
                 />
 
-                <div className="flex gap-4 mb-8 flex-wrap">
-                    {/* Display uploaded images */}
-                    {images.map((img, index) => (
-                        <div key={index} className="relative w-24 h-24 border-2 border-gray-300 rounded-2xl overflow-hidden group">
-                            <img src={img} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
-                            <button
-                                type="button"
-                                onClick={() => handleDeleteImage(index)}
-                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                            >
-                                <CloseCircleOutlined />
-                            </button>
-                        </div>
-                    ))}
+                {/* Images Upload */}
+                <div className="mb-6">
+                    <label className="block text-gray-500 font-bold mb-3">Gambar Produk</label>
+                    <div className="flex gap-4 flex-wrap">
+                        {images.map((image, index) => (
+                            <div key={index} className="relative w-24 h-24 group">
+                                <img
+                                    src={image}
+                                    alt={`Upload ${index + 1}`}
+                                    className="w-full h-full object-cover rounded-2xl border-2 border-blue-400"
+                                />
+                                <button
+                                    onClick={() => handleDeleteImage(index)}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600"
+                                >
+                                    <CloseCircleOutlined className="text-sm" />
+                                </button>
+                            </div>
+                        ))}
 
-                    {/* Upload button */}
-                    <div
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-2xl flex items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-400 transition cursor-pointer"
-                    >
-                        <PlusOutlined className="text-2xl" />
+                        <div
+                            onClick={triggerFileInput}
+                            className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-2xl flex items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-400 transition cursor-pointer"
+                        >
+                            <PlusOutlined className="text-2xl" />
+                        </div>
                     </div>
+                    <p className="text-xs text-gray-400 mt-2">Upload gambar produk (max 5MB per file)</p>
                 </div>
 
                 <div className="space-y-6">
+                    {/* Name */}
                     <div>
-                        <label className="block text-gray-500 font-bold mb-2">Judul Produk</label>
+                        <label className="block text-gray-500 font-bold mb-2">Nama Produk *</label>
                         <input
                             type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Judul Produk"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Nama Produk"
                             className="w-full px-4 py-3 bg-[#f3f4f9] rounded-xl border-none focus:ring-2 focus:ring-blue-400 outline-none"
                         />
                     </div>
 
+                    {/* Description */}
                     <div>
                         <label className="block text-gray-500 font-bold mb-2">Deskripsi</label>
                         <RichTextEditor
@@ -269,35 +333,36 @@ export default function AdminEditProduk() {
                         />
                     </div>
 
+                    {/* Category ID */}
                     <div>
-                        <label className="block text-gray-500 font-bold mb-2">Kategori</label>
+                        <label className="block text-gray-500 font-bold mb-2">Kategori *</label>
                         <select
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value)}
+                            value={categoryId}
+                            onChange={(e) => setCategoryId(parseInt(e.target.value))}
                             className="w-full px-4 py-4 bg-white border-2 border-blue-400 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
                         >
-                            <option value="">Pilih Kategori</option>
-                            <option value="Course">Course</option>
-                            <option value="Kelas">Kelas</option>
+                            <option value={0}>Pilih Kategori</option>
+                            {CATEGORIES.map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
                         </select>
                     </div>
 
+                    {/* Link Product */}
                     <div>
-                        <label className="block text-gray-500 font-bold mb-2">Platform</label>
+                        <label className="block text-gray-500 font-bold mb-2">Link Produk *</label>
                         <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 flex flex-col gap-2">
                             <input
                                 type="text"
-                                value={platformLink}
+                                value={linkProduct}
                                 onChange={(e) => handlePlatformLinkChange(e.target.value)}
-                                disabled={!category}
+                                disabled={!categoryId}
                                 placeholder={
-                                    category === "Course"
-                                        ? "Link Gdrive"
-                                        : category === "Kelas"
-                                            ? "Link WhatsApp"
-                                            : "Pilih kategori terlebih dahulu"
+                                    selectedCategory
+                                        ? `Link ${selectedCategory.platform}`
+                                        : "Pilih kategori terlebih dahulu"
                                 }
-                                className={`flex-1 px-4 py-3 bg-white rounded-full border shadow-sm outline-none focus:ring-2 ${!category
+                                className={`flex-1 px-4 py-3 bg-white rounded-full border shadow-sm outline-none focus:ring-2 ${!categoryId
                                     ? 'border-gray-200 cursor-not-allowed bg-gray-100'
                                     : platformError
                                         ? 'border-red-400 focus:ring-red-400'
@@ -311,95 +376,84 @@ export default function AdminEditProduk() {
                             )}
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Bottom Grid: Harga & Add-ons */}
-            <div className="grid grid-cols-1 md:grid-cols-11 gap-6">
-                {/* Harga section - takes 5 cols */}
-                <div className="md:col-span-5 bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-                    <h2 className="text-xl font-bold text-gray-500 mb-6">Harga</h2>
-
-                    <div className="space-y-6">
+                    {/* Price & Stock Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Price */}
                         <div>
-                            <label className="block text-gray-500 font-bold mb-2 text-sm">Harga Produk</label>
+                            <label className="block text-gray-500 font-bold mb-2">Harga *</label>
                             <div className="flex gap-2">
                                 <div className="px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm font-bold text-gray-500">IDR</div>
                                 <input
                                     type="number"
-                                    value={price}
-                                    onChange={(e) => setPrice(e.target.value)}
+                                    value={price || ""}
+                                    onChange={(e) => setPrice(parseInt(e.target.value) || 0)}
                                     placeholder="0"
                                     className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-blue-400"
                                 />
                             </div>
                         </div>
 
+                        {/* Stock */}
                         <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <label className="text-gray-500 font-bold text-sm">Limit Quantity</label>
-                                <button
-                                    onClick={() => setIsLimitQuantity(!isLimitQuantity)}
-                                    className={`w-12 h-6 rounded-full transition-colors relative ${isLimitQuantity ? 'bg-blue-400' : 'bg-gray-300'}`}
-                                >
-                                    <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${isLimitQuantity ? 'translate-x-6' : ''}`} />
-                                </button>
-                            </div>
+                            <label className="block text-gray-500 font-bold mb-2">Stok *</label>
                             <input
-                                type="text"
-                                value={limit}
-                                onChange={(e) => setLimit(e.target.value)}
-                                disabled={!isLimitQuantity}
-                                placeholder="Masukan Quantity"
-                                className={`w-full px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-blue-400 ${!isLimitQuantity ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                type="number"
+                                value={stock || ""}
+                                onChange={(e) => setStock(parseInt(e.target.value) || 0)}
+                                placeholder="0"
+                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-blue-400"
                             />
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {/* Add-ons section - takes 6 cols */}
-                <div className="md:col-span-6 bg-white rounded-2xl shadow-sm border border-gray-200 p-8 flex flex-col">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-bold text-gray-500">Add-ons</h2>
-                        <button
-                            type="button"
-                            onClick={() => setIsAddOnModalOpen(true)}
-                            className="text-[#2ecc71] font-bold flex items-center gap-1 hover:opacity-80 transition"
-                        >
-                            <PlusOutlined /> Tambah
-                        </button>
-                    </div>
+            {/* Add-ons Section */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-gray-500">Add-ons</h2>
+                    <button
+                        type="button"
+                        onClick={openAddOnModal}
+                        className="text-[#2ecc71] font-bold flex items-center gap-1 hover:opacity-80 transition"
+                    >
+                        <PlusOutlined /> Tambah
+                    </button>
+                </div>
 
-                    <div className="flex-1 space-y-3">
-                        {addOns.length === 0 ? (
-                            <p className="text-gray-400 text-center py-8">Belum ada add-ons</p>
-                        ) : (
-                            addOns.map((addon) => (
-                                <div key={addon.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-xl shadow-sm">
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDeleteAddOn(addon.id)}
-                                            className="text-gray-400 hover:text-red-500 transition"
-                                        >
-                                            <DeleteOutlined />
-                                        </button>
-                                        <div>
-                                            <span className="font-bold text-gray-700 block">{addon.title}</span>
-                                            <span className="text-sm text-gray-500">Rp {parseInt(addon.price).toLocaleString('id-ID')}</span>
-                                        </div>
-                                    </div>
+                <div className="space-y-3">
+                    {addOns.length === 0 ? (
+                        <p className="text-gray-400 text-center py-8">Belum ada add-ons</p>
+                    ) : (
+                        addOns.map((addon, index) => (
+                            <div key={index} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl shadow-sm">
+                                <div className="flex items-center gap-3 flex-1">
                                     <button
                                         type="button"
-                                        onClick={() => handleEditAddOn(addon)}
-                                        className="text-gray-400 hover:text-blue-500 transition"
+                                        onClick={() => handleDeleteAddOn(index)}
+                                        className="text-gray-400 hover:text-red-500 transition"
                                     >
-                                        <EditOutlined />
+                                        <DeleteOutlined />
                                     </button>
+                                    <div className="flex-1">
+                                        <span className="font-bold text-gray-700 block">{addon.name}</span>
+                                        <span className="text-sm text-gray-500">Rp {addon.price.toLocaleString('id-ID')}</span>
+                                        {addon.link_add_ons && (
+                                            <span className="text-xs text-blue-500 block truncate max-w-xs">{addon.link_add_ons}</span>
+                                        )}
+                                    </div>
                                 </div>
-                            ))
-                        )}
-                    </div>
+                                <button
+                                    type="button"
+                                    onClick={() => openEditAddOnModal(index)}
+                                    className="text-gray-400 hover:text-blue-500 transition"
+                                >
+                                    <EditOutlined />
+                                </button>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 
@@ -413,19 +467,74 @@ export default function AdminEditProduk() {
                 </button>
                 <button
                     onClick={handleSave}
-                    className="px-10 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition shadow-lg active:scale-95"
+                    disabled={saving}
+                    className={`px-10 py-3 rounded-xl font-bold transition shadow-lg active:scale-95 ${saving ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        }`}
                 >
-                    Update
+                    {saving ? 'Menyimpan...' : 'Update'}
                 </button>
             </div>
 
             {/* Add-On Modal */}
-            <AddOnModal
-                isOpen={isAddOnModalOpen}
-                onClose={handleCloseModal}
-                onSave={handleAddOnSave}
-                editData={editingAddOn}
-            />
+            {isAddOnModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+                        <h3 className="text-2xl font-bold text-gray-900 mb-6">
+                            {editingIndex !== null ? "Edit Add-on" : "Tambah Add-on"}
+                        </h3>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-gray-700 font-semibold mb-2">Nama *</label>
+                                <input
+                                    type="text"
+                                    value={tempAddOn.name}
+                                    onChange={(e) => setTempAddOn({ ...tempAddOn, name: e.target.value })}
+                                    placeholder="Nama add-on"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-400"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-gray-700 font-semibold mb-2">Harga *</label>
+                                <input
+                                    type="number"
+                                    value={tempAddOn.price || ""}
+                                    onChange={(e) => setTempAddOn({ ...tempAddOn, price: parseInt(e.target.value) || 0 })}
+                                    placeholder="0"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-400"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-gray-700 font-semibold mb-2">Link Add-on</label>
+                                <input
+                                    type="text"
+                                    value={tempAddOn.link_add_ons}
+                                    onChange={(e) => setTempAddOn({ ...tempAddOn, link_add_ons: e.target.value })}
+                                    placeholder="https://..."
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-400"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                onClick={handleCloseModal}
+                                className="flex-1 py-3 rounded-xl font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                onClick={handleSaveAddOn}
+                                className="flex-1 py-3 rounded-xl font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all"
+                            >
+                                Simpan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

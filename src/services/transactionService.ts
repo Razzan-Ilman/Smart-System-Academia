@@ -12,7 +12,7 @@ export interface TransactionDetail {
 }
 
 class TransactionService {
-    private endpoint = '/transactions';
+    private endpoint = '/transaction';
 
     // Get all transactions
     async getAll(): Promise<TransactionDetail[]> {

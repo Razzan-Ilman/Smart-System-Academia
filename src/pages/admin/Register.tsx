@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import icon2 from "../../images/icon2.png";
 import { Link, useNavigate } from "react-router-dom";
+import { authService } from "../../services/adminService";
+import { toast } from "sonner";
 
 const AdminRegister: React.FC = () => {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -14,6 +17,11 @@ const AdminRegister: React.FC = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!email || !name || !username || !password || !confirmPassword) {
+      setError("Semua kolom wajib diisi");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError("Password dan konfirmasi password tidak sama");
@@ -24,33 +32,39 @@ const AdminRegister: React.FC = () => {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:5000/api/admin/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          username,
-          password,
-          confirmPassword,
-          role: "admin", // otomatis admin
-        }),
+      await authService.register({
+        email: email,
+        username: username,
+        password: password,
+        confirmPassword: confirmPassword,
+        role: "admin"
       });
-
-      if (!res.ok) {
-        throw new Error("Register gagal");
-      }
-
+      toast.success("Register berhasil! Silakan login.");
       navigate("/admin/login");
     } catch (err: any) {
-      setError(err.message || "Register gagal");
+      let errorMessage = err.response?.data?.message || err.message || "Register gagal";
+
+      // Handle Duplicate Name/Username Error
+      if (errorMessage.includes("duplicate key value violates unique constraint")) {
+        if (errorMessage.includes("uni_users_name")) {
+          errorMessage = "Nama atau Username sudah digunakan. Silakan gunakan yang lain.";
+        } else if (errorMessage.includes("email")) {
+          errorMessage = "Email sudah terdaftar. Silakan gunakan email lain.";
+        } else {
+          errorMessage = "Data sudah terdaftar. Silakan periksa kembali input Anda.";
+        }
+      }
+
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
- <div className="min-h-screen flex overflow-hidden relative">
-      
+    <div className="min-h-screen flex overflow-hidden relative">
+
       {/* BACKGROUND */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50" />
 
@@ -72,13 +86,26 @@ const AdminRegister: React.FC = () => {
 
           {/* EMAIL */}
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Email</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Email</label>
             <input
               type="email"
               required
               value={email}
               placeholder="Masukan Email"
               onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-purple-400 outline-none"
+            />
+          </div>
+
+          {/* NAME */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1 text-gray-700">Nama Lengkap</label>
+            <input
+              type="text"
+              required
+              value={name}
+              placeholder="Masukan Nama Lengkap"
+              onChange={(e) => setName(e.target.value)}
               className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-purple-400 outline-none"
             />
           </div>

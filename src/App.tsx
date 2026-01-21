@@ -4,7 +4,7 @@ import AdminLayout from "./components/AdminLayout";
 
 // ADMIN PAGES
 import AdminLogin from "./pages/admin/Login";
-// import AdminRegister from "./pages/admin/Register";
+import AdminRegister from "./pages/admin/Register";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminKategoriProduk from "./pages/admin/KategoriProduk";
 import AdminTambahKategori from "./pages/admin/TambahKategori";
@@ -12,6 +12,7 @@ import AdminEditKategori from "./pages/admin/EditKategori";
 import AdminProduk from "./pages/admin/Produk";
 import AdminTambahProduk from "./pages/admin/TambahProduk";
 import AdminEditProduk from "./pages/admin/EditProduk";
+import AdminEditAddOns from "./pages/admin/EditAddOns";
 import AdminListTransaksi from "./pages/admin/ListTransaksi";
 
 // USER PAGES
@@ -20,6 +21,7 @@ import DetailProduk from "./pages/user/detailProduk";
 import Payment from "./pages/user/Payment";
 import Qris from "./pages/user/qris";
 import VirtualAccount from './pages/user/VirtualAkun';
+import MinimarketPayment from './pages/user/MinimarketPayment';
 import PaymentSuccess from './pages/user/PaymentSuccess';
 import PaymentFailed from './pages/user/PaymentFailed';
 import NotFound from "./pages/NotFound";
@@ -36,13 +38,14 @@ function App() {
           <Route path="/payment" element={<Payment />} />
           <Route path="/qris" element={<Qris />} />
           <Route path="/virtual-account" element={<VirtualAccount />} />
+          <Route path="/minimarket-payment" element={<MinimarketPayment />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
 
 
           {/* ADMIN */}
           <Route path="/admin/login" element={<AdminLogin />} />
-          {/* <Route path="/admin/register" element={<AdminRegister />} /> */}
+          <Route path="/admin/register" element={<AdminRegister />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
@@ -52,6 +55,7 @@ function App() {
             <Route path="produk" element={<AdminProduk />} />
             <Route path="produk/tambah" element={<AdminTambahProduk />} />
             <Route path="produk/edit/:id" element={<AdminEditProduk />} />
+            <Route path="produk/:productId/add-ons/edit/:addOnId" element={<AdminEditAddOns />} />
             <Route path="list-transaksi" element={<AdminListTransaksi />} />
           </Route>
 

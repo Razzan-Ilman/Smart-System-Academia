@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Copy, Check, Clock, Building2, AlertCircle, RefreshCw } from 'lucide-react';
 import Navbar from '../../components/user/Navbar';
@@ -9,12 +9,22 @@ const VirtualAccount = () => {
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState(24 * 60 * 60); // 24 hours in seconds
   const [isChecking, setIsChecking] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   // Data dari payment page
   const { amount, email, name, phone, orderId, paymentMethod } = location.state || {};
 
-  // Generate Virtual Account Number (contoh)
-  const vaNumber = `8808${Math.floor(Math.random() * 10000000000000).toString().padStart(13, '0')}`;
+  // Generate stable Virtual Account Number based on orderId
+  const vaNumber = useMemo(() => {
+    if (!orderId) {
+      return `8808${Math.floor(Math.random() * 10000000000000).toString().padStart(13, '0')}`;
+    }
+    // Extract timestamp from orderId (format: ORD-timestamp)
+    const timestamp = orderId.split('-')[1] || Date.now().toString();
+    // Use last 13 digits of timestamp, pad if needed
+    const vaDigits = timestamp.slice(-13).padStart(13, '0');
+    return `8808${vaDigits}`;
+  }, [orderId]);
 
   // Bank info berdasarkan payment method
   const bankInfo = {
@@ -25,10 +35,16 @@ const VirtualAccount = () => {
     permata: { name: 'Permata Bank', color: 'from-green-600 to-green-700', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Bank_Permata_logo.svg/320px-Bank_Permata_logo.svg.png' },
     bsi: { name: 'Bank Syariah Indonesia', color: 'from-teal-600 to-teal-700', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Bank_Syariah_Indonesia.svg/320px-Bank_Syariah_Indonesia.svg.png' },
     cimb: { name: 'CIMB Niaga', color: 'from-red-600 to-red-700', logo: '/payment/CIMB_Niaga.jpeg' },
+    sinarmas: { name: 'Bank Sinarmas', color: 'from-red-500 to-red-600', logo: '/payment/Bank_Sinarmas.jpeg' },
+    muamalat: { name: 'Bank Muamalat', color: 'from-purple-700 to-purple-800', logo: '/payment/Bank_Muamalat.jpeg' },
+    bnc: { name: 'Bank Neo Commerce', color: 'from-yellow-400 to-yellow-500', logo: '/payment/Bank_Neo_Commerce.jpeg' },
+    maybank: { name: 'Maybank', color: 'from-yellow-500 to-yellow-600', logo: '/payment/MayBank.jpeg' },
+    indomaret: { name: 'Indomaret', color: 'from-blue-600 to-red-600', logo: '/payment/Indomaret.jpeg' },
+    alfamart: { name: 'Alfamart', color: 'from-red-600 to-red-700', logo: '/payment/Alfamart.jpeg' },
     default: { name: 'Virtual Account', color: 'from-purple-600 to-pink-600', logo: '' }
   };
 
-  const currentBank = bankInfo[paymentMethod] || bankInfo.default;
+  const currentBank = bankInfo[paymentMethod as keyof typeof bankInfo] || bankInfo.default;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -44,21 +60,21 @@ const VirtualAccount = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const formatRupiah = (value) =>
+  const formatRupiah = (value: number) =>
     new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
       minimumFractionDigits: 0,
     }).format(value);
 
-  const copyToClipboard = (text) => {
+  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -66,14 +82,14 @@ const VirtualAccount = () => {
 
   const handleCheckPayment = () => {
     setIsChecking(true);
-    
+
     // Simulasi pengecekan pembayaran (3 detik)
     setTimeout(() => {
       setIsChecking(false);
-      
+
       // Random success/failed untuk demo (50/50)
       const isSuccess = Math.random() > 0.5;
-      
+
       if (isSuccess) {
         navigate('/payment-success', {
           state: {
@@ -82,7 +98,8 @@ const VirtualAccount = () => {
             paymentMethod: currentBank.name,
             vaNumber,
             name,
-            email
+            email,
+            items: location.state?.items || []
           }
         });
       } else {
@@ -98,12 +115,17 @@ const VirtualAccount = () => {
     }, 3000);
   };
 
+  const handleCancelPayment = () => {
+    setShowCancelModal(false);
+    navigate('/payment', { replace: true });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-100 relative overflow-hidden">
       {/* Decorative Elements */}
       <div className="absolute top-0 left-0 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{animationDelay: '1s'}}></div>
-      
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{ animationDelay: '1s' }}></div>
+
       <Navbar />
 
       {/* Main Content */}
@@ -131,7 +153,7 @@ const VirtualAccount = () => {
             <div className={`bg-gradient-to-br ${currentBank.color} rounded-3xl shadow-2xl p-8 text-white relative overflow-hidden`}>
               <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-10 rounded-full -mr-20 -mt-20"></div>
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-10 rounded-full -ml-16 -mb-16"></div>
-              
+
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-8">
                   <Building2 className="w-8 h-8" />
@@ -139,7 +161,7 @@ const VirtualAccount = () => {
                     <img src={currentBank.logo} alt={currentBank.name} className="h-8 object-contain bg-white px-3 py-1 rounded" />
                   )}
                 </div>
-                
+
                 <div className="mb-6">
                   <p className="text-sm opacity-80 mb-2">Virtual Account Number</p>
                   <div className="flex items-center justify-between bg-white/20 backdrop-blur-sm rounded-xl p-4">
@@ -163,7 +185,7 @@ const VirtualAccount = () => {
             {/* Payment Instructions */}
             <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl p-6 border border-gray-100">
               <h3 className="font-bold text-lg text-gray-800 mb-4">Cara Pembayaran</h3>
-              
+
               <div className="space-y-3">
                 <div className="flex gap-3">
                   <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
@@ -213,7 +235,7 @@ const VirtualAccount = () => {
             {/* Order Info */}
             <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl p-6 border border-gray-100">
               <h3 className="font-bold text-lg text-gray-800 mb-4">Detail Pesanan</h3>
-              
+
               <div className="space-y-3">
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-gray-600 text-sm">Order ID</span>
@@ -242,11 +264,10 @@ const VirtualAccount = () => {
             <button
               onClick={handleCheckPayment}
               disabled={isChecking}
-              className={`w-full py-5 rounded-2xl font-bold text-lg shadow-xl transition-all transform hover:scale-[1.02] flex items-center justify-center gap-3 ${
-                isChecking
-                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-2xl'
-              }`}
+              className={`w-full py-5 rounded-2xl font-bold text-lg shadow-xl transition-all transform hover:scale-[1.02] flex items-center justify-center gap-3 ${isChecking
+                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-2xl'
+                }`}
             >
               {isChecking ? (
                 <>
@@ -259,6 +280,14 @@ const VirtualAccount = () => {
                   Cek Status Pembayaran
                 </>
               )}
+            </button>
+
+            {/* Cancel Payment Button */}
+            <button
+              onClick={() => setShowCancelModal(true)}
+              className="w-full py-4 rounded-2xl font-semibold text-gray-600 bg-white border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-all"
+            >
+              Batalkan Pembayaran
             </button>
 
             {/* Important Notes */}
@@ -279,6 +308,37 @@ const VirtualAccount = () => {
           </div>
         </div>
       </div>
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-red-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Batalkan Pembayaran?</h3>
+              <p className="text-gray-600 mb-6">
+                Apakah Anda yakin ingin membatalkan pembayaran ini? Nomor Virtual Account akan hangus dan Anda harus membuat pesanan baru.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="flex-1 py-3 rounded-xl font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+                >
+                  Tidak, Lanjutkan
+                </button>
+                <button
+                  onClick={handleCancelPayment}
+                  className="flex-1 py-3 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-all"
+                >
+                  Ya, Batalkan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

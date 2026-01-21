@@ -7,13 +7,20 @@ export interface Category {
 }
 
 class CategoryService {
-    private endpoint = '/categories';
+    private endpoint = '/category';
 
     // Get all categories
     async getAll(): Promise<Category[]> {
         try {
             const response = await axiosInstance.get<Category[]>(this.endpoint);
-            return response.data;
+            const list = response.data || [];
+            // @ts-ignore
+            const rawList = list.data || list;
+            return rawList.map((item: any) => ({
+                id: item.Id || item.id,
+                name: item.Name || item.name,
+                date: item.Date || item.date
+            }));
         } catch (error) {
             // Fallback to localStorage
             const saved = localStorage.getItem('admin_categories');
@@ -25,7 +32,14 @@ class CategoryService {
     async getById(id: number): Promise<Category | null> {
         try {
             const response = await axiosInstance.get<Category>(`${this.endpoint}/${id}`);
-            return response.data;
+            const data: any = response.data;
+            // @ts-ignore
+            const item = data.data || data;
+            return {
+                id: item.Id || item.id,
+                name: item.Name || item.name,
+                date: item.Date || item.date
+            };
         } catch (error) {
             // Fallback to localStorage
             const saved = localStorage.getItem('admin_categories');
@@ -40,7 +54,10 @@ class CategoryService {
     // Create new category
     async create(category: Omit<Category, 'id'>): Promise<Category> {
         try {
-            const response = await axiosInstance.post<Category>(this.endpoint, category);
+            const payload = {
+                name: category.name
+            };
+            const response = await axiosInstance.post<Category>(this.endpoint, payload);
             return response.data;
         } catch (error) {
             // Fallback to localStorage
@@ -56,7 +73,10 @@ class CategoryService {
     // Update category
     async update(id: number, category: Partial<Category>): Promise<Category> {
         try {
-            const response = await axiosInstance.put<Category>(`${this.endpoint}/${id}`, category);
+            const payload: any = {};
+            if (category.name) payload.name = category.name;
+
+            const response = await axiosInstance.put<Category>(`${this.endpoint}/${id}`, payload);
             return response.data;
         } catch (error) {
             // Fallback to localStorage

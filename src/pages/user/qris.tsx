@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import Navbar from '../../components/user/Navbar';
-import { QrCode, CheckCircle2, Clock, Copy, ArrowLeft, RefreshCw } from 'lucide-react';
+import { QrCode, CheckCircle2, Clock, Copy, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
 
 const QRISPayment = () => {
   const navigate = useNavigate();
@@ -15,6 +15,7 @@ const QRISPayment = () => {
   const [paymentStatus, setPaymentStatus] = useState('pending');
   const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes in seconds
   const [copied, setCopied] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   // Get payment data
   const totalAmount = stateData.amount || parseInt(searchParams.get('amount') || '425000');
@@ -104,22 +105,7 @@ const QRISPayment = () => {
               email: buyerEmail,
               name: buyerName,
               phone: buyerPhone,
-              items: [
-                {
-                  id: 1,
-                  name: 'Nama Produk',
-                  image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200',
-                  price: 150000,
-                  quantity: 1
-                },
-                {
-                  id: 2,
-                  name: 'Nama Produk',
-                  image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200',
-                  price: totalAmount - 150000,
-                  quantity: 1
-                }
-              ]
+              items: stateData.items || []
             }
           });
         }, 2000);
@@ -138,6 +124,11 @@ const QRISPayment = () => {
         }, 2000);
       }
     }, 2000);
+  };
+
+  const handleCancelPayment = () => {
+    setShowCancelModal(false);
+    navigate('/payment', { replace: true });
   };
 
   return (
@@ -315,6 +306,15 @@ const QRISPayment = () => {
               )}
             </button>
 
+            {/* Cancel Payment Button */}
+            <button
+              onClick={() => setShowCancelModal(true)}
+              disabled={paymentStatus === 'checking' || paymentStatus === 'success'}
+              className="w-full py-4 rounded-2xl font-semibold text-gray-600 bg-white border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Batalkan Pembayaran
+            </button>
+
             {/* Success Message */}
             {paymentStatus === 'success' && (
               <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl text-center">
@@ -331,6 +331,37 @@ const QRISPayment = () => {
           </div>
         </div>
       </div>
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-red-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Batalkan Pembayaran?</h3>
+              <p className="text-gray-600 mb-6">
+                Apakah Anda yakin ingin membatalkan pembayaran ini? Kode QR akan hangus dan Anda harus membuat pesanan baru.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="flex-1 py-3 rounded-xl font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+                >
+                  Tidak, Lanjutkan
+                </button>
+                <button
+                  onClick={handleCancelPayment}
+                  className="flex-1 py-3 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-all"
+                >
+                  Ya, Batalkan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -7,32 +7,20 @@ import {
   SearchOutlined,
   FilterOutlined,
 } from "@ant-design/icons";
+import { toast } from "sonner";
 import ConfirmModal from "../../components/admin/ConfirmModal";
+import { categoryService } from "../../services/adminService";
+import type { Category as APICategory } from "../../services/adminService";
 
 interface Category {
   id: number;
   name: string;
 }
 
-const DEFAULT_CATEGORIES: Category[] = [
-  { id: 1, name: "Kelas" },
-  { id: 2, name: "Course" },
-];
-
 export default function KategoriProdukContent() {
   const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("admin_categories");
-    if (saved) {
-      setCategories(JSON.parse(saved));
-    } else {
-      setCategories(DEFAULT_CATEGORIES);
-      localStorage.setItem("admin_categories", JSON.stringify(DEFAULT_CATEGORIES));
-    }
-  }, []);
-
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<string>("Semua");
   const [showFilter, setShowFilter] = useState(false);
@@ -40,19 +28,58 @@ export default function KategoriProdukContent() {
   // Delete State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Fetch categories from API
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const data: APICategory[] = await categoryService.getAll();
+
+      // Transform API data to match UI format
+      const transformedCategories = data.map((category) => ({
+        id: category.id || 0,
+        name: category.name
+      }));
+
+      setCategories(transformedCategories);
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+      toast.error('Gagal memuat kategori');
+      setCategories([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDeleteClick = (id: number) => {
     setCategoryToDelete(id);
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (categoryToDelete !== null) {
-      const updatedCategories = categories.filter((c: Category) => c.id !== categoryToDelete);
-      setCategories(updatedCategories);
-      localStorage.setItem("admin_categories", JSON.stringify(updatedCategories));
-      setIsDeleteModalOpen(false);
-      setCategoryToDelete(null);
+      try {
+        setDeleting(true);
+        await categoryService.delete(categoryToDelete);
+
+        // Update local state
+        const updatedCategories = categories.filter((c: Category) => c.id !== categoryToDelete);
+        setCategories(updatedCategories);
+
+        toast.success('Kategori berhasil dihapus');
+        setIsDeleteModalOpen(false);
+        setCategoryToDelete(null);
+      } catch (error) {
+        console.error('Failed to delete category:', error);
+        toast.error('Gagal menghapus kategori');
+      } finally {
+        setDeleting(false);
+      }
     }
   };
 
@@ -61,6 +88,17 @@ export default function KategoriProdukContent() {
     const matchesFilter = filterType === "Semua" || item.name === filterType;
     return matchesSearch && matchesFilter;
   });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Memuat kategori...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -237,6 +275,7 @@ export default function KategoriProdukContent() {
         onConfirm={confirmDelete}
         title="Hapus Kategori?"
         confirmText="Ya, Hapus"
+        isLoading={deleting}
       />
     </div>
   );

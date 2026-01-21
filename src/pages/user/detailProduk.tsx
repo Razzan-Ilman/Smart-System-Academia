@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/user/Navbar";
-import { X, Plus, Menu, CheckCircle2 } from "lucide-react";
+import { X, Plus, CheckCircle2 } from "lucide-react";
 
 type AddOn = {
   id: number;
@@ -143,7 +143,7 @@ const DetailProduk = () => {
             {/* Mobile: Product Info Card */}
             <div className="md:hidden bg-white rounded-2xl shadow-lg p-4">
               <h2 className="text-lg font-semibold mb-1">Judul Produk</h2>
-              
+
               {/* Thumbnail Images - Mobile */}
               <div className="flex gap-2 mb-4">
                 {images.map((img, i) => (
@@ -152,10 +152,9 @@ const DetailProduk = () => {
                     src={img}
                     onClick={() => setMainImage(img)}
                     className={`w-12 h-12 md:w-16 md:h-16 rounded-lg object-cover border cursor-pointer
-                      ${
-                        mainImage === img
-                          ? "ring-2 ring-purple-500"
-                          : "hover:ring-2 hover:ring-purple-300"
+                      ${mainImage === img
+                        ? "ring-2 ring-purple-500"
+                        : "hover:ring-2 hover:ring-purple-300"
                       }`}
                   />
                 ))}
@@ -201,6 +200,9 @@ const DetailProduk = () => {
                     state: {
                       totalPrice,
                       basePrice,
+                      productName: "Kilas Balik Academia",
+                      productImage: "👗",
+                      productCategory: "Fashion & Education",
                       addOns: addOns.filter(a => selectedAddOns.includes(a.id)),
                     },
                   });
@@ -215,7 +217,7 @@ const DetailProduk = () => {
           <div className="hidden md:block space-y-6">
             {/* PRODUCT INFO */}
             <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h2 className="text-xl font-semibold mb-1">Nama Produk</h2>
+              <h2 className="text-xl font-semibold mb-1">Kilas Balik Academia</h2>
               <p className="text-lg font-bold mb-4">
                 {formatRupiah(basePrice)}
               </p>
@@ -228,10 +230,9 @@ const DetailProduk = () => {
                     src={img}
                     onClick={() => setMainImage(img)}
                     className={`w-16 h-16 rounded-lg object-cover border cursor-pointer
-                      ${
-                        mainImage === img
-                          ? "ring-2 ring-purple-500"
-                          : "hover:ring-2 hover:ring-purple-300"
+                      ${mainImage === img
+                        ? "ring-2 ring-purple-500"
+                        : "hover:ring-2 hover:ring-purple-300"
                       }`}
                   />
                 ))}
@@ -259,6 +260,9 @@ const DetailProduk = () => {
                     state: {
                       totalPrice,
                       basePrice,
+                      productName: "Kilas Balik Academia",
+                      productImage: "👗",
+                      productCategory: "Fashion & Education",
                       addOns: addOns.filter(a => selectedAddOns.includes(a.id)),
                     },
                   });
@@ -271,114 +275,116 @@ const DetailProduk = () => {
         </div>
       </div>
 
-{/* ===== MOBILE ADD-ONS POPUP ===== */}
-{showAddOnsPopup && (
-  <div
-    className="md:hidden fixed inset-0 bg-black/50 z-50 flex items-end"
-    onClick={() => setShowAddOnsPopup(false)}
-  >
-    <div
-      className="w-full bg-white rounded-t-3xl max-h-[75vh] flex flex-col animate-slide-up"
-      onClick={(e) => e.stopPropagation()}
-    >
+      {/* ===== MOBILE ADD-ONS POPUP ===== */}
+      {
+        showAddOnsPopup && (
+          <div
+            className="md:hidden fixed inset-0 bg-black/50 z-50 flex items-end"
+            onClick={() => setShowAddOnsPopup(false)}
+          >
+            <div
+              className="w-full bg-white rounded-t-3xl max-h-[75vh] flex flex-col animate-slide-up"
+              onClick={(e) => e.stopPropagation()}
+            >
 
-      {/* ===== HEADER ===== */}
-      <div className="p-4 border-b flex justify-between items-center">
-        <div>
-          <h3 className="font-bold text-lg">Pilih Add Ons</h3>
-          <p className="text-sm text-gray-500">
-            Tambahan opsional untuk produk kamu
-          </p>
-        </div>
+              {/* ===== HEADER ===== */}
+              <div className="p-4 border-b flex justify-between items-center">
+                <div>
+                  <h3 className="font-bold text-lg">Pilih Add Ons</h3>
+                  <p className="text-sm text-gray-500">
+                    Tambahan opsional untuk produk kamu
+                  </p>
+                </div>
 
-        <button
-          onClick={() => setShowAddOnsPopup(false)}
-          className="p-2 hover:bg-gray-100 rounded-full"
-        >
-          ✕
-        </button>
-      </div>
+                <button
+                  onClick={() => setShowAddOnsPopup(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  ✕
+                </button>
+              </div>
 
-      {/* ===== INI BAGIAN YANG BISA DI SCROLL ===== */}
-      <div className="flex-1 overflow-y-auto px-4 py-2
+              {/* ===== INI BAGIAN YANG BISA DI SCROLL ===== */}
+              <div className="flex-1 overflow-y-auto px-4 py-2
         scrollbar-thin scrollbar-thumb-purple-400 scrollbar-track-purple-100">
 
-        {/* Contoh list Add Ons */}
-        {addOns.map((item) => (
-          <div
-            key={item.id}
-            onClick={() => handleToggleAddOn(item.id)}
-            className={`
+                {/* Contoh list Add Ons */}
+                {addOns.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleToggleAddOn(item.id)}
+                    className={`
               mb-3 p-3 border rounded-xl cursor-pointer transition
               flex items-center justify-between
               ${selectedAddOns.includes(item.id)
-                ? "border-purple-500 bg-purple-50"
-                : "border-gray-200"}
+                        ? "border-purple-500 bg-purple-50"
+                        : "border-gray-200"}
             `}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Plus className="w-5 h-5 text-purple-600" />
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <Plus className="w-5 h-5 text-purple-600" />
+                      </div>
+
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-sm text-gray-500">
+                          {formatRupiah(item.price)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      {selectedAddOns.includes(item.id) ? (
+                        <CheckCircle2 className="text-purple-600" />
+                      ) : (
+                        <div className="w-5 h-5 border rounded-full" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+
               </div>
 
-              <div>
-                <p className="font-medium">{item.name}</p>
-                <p className="text-sm text-gray-500">
-                  {formatRupiah(item.price)}
-                </p>
-              </div>
-            </div>
+              {/* ===== FOOTER FIX ===== */}
+              <div className="p-4 border-t bg-white shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-gray-600">
+                    Add-On (Optional)
+                  </span>
+                  <Plus className="w-4 h-4 text-gray-400" />
+                </div>
 
-            <div>
-              {selectedAddOns.includes(item.id) ? (
-                <CheckCircle2 className="text-purple-600" />
-              ) : (
-                <div className="w-5 h-5 border rounded-full" />
-              )}
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm text-gray-600">Total</span>
+                  <span className="text-xl font-bold text-purple-600">
+                    {formatRupiah(totalPrice)}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => {
+                    navigate("/payment", {
+                      state: {
+                        totalPrice,
+                        basePrice,
+                        addOns: addOns.filter(a => selectedAddOns.includes(a.id)),
+                      },
+                    });
+                  }}
+                  className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-3 rounded-xl font-semibold active:scale-95 transition"
+                >
+                  Check Out
+                </button>
+              </div>
+
             </div>
           </div>
-        ))}
+        )
+      }
 
-      </div>
-
-      {/* ===== FOOTER FIX ===== */}
-      <div className="p-4 border-t bg-white shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-gray-600">
-            Add-On (Optional)
-          </span>
-          <Plus className="w-4 h-4 text-gray-400" />
-        </div>
-
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-sm text-gray-600">Total</span>
-          <span className="text-xl font-bold text-purple-600">
-            {formatRupiah(totalPrice)}
-          </span>
-        </div>
-
-        <button
-          onClick={() => {
-          navigate("/payment", {
-            state: {
-              totalPrice,
-              basePrice,
-              addOns: addOns.filter(a => selectedAddOns.includes(a.id)),
-            },
-          });
-        }}
-          className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-3 rounded-xl font-semibold active:scale-95 transition"
-        >
-          Check Out
-        </button>
-      </div>
-
-    </div>
-  </div>
-)}
-
-{/* ===== STYLE ANIMATION + SCROLL ===== */}
-<style>{`
+      {/* ===== STYLE ANIMATION + SCROLL ===== */}
+      <style>{`
   @keyframes slide-up {
     from {
       transform: translateY(100%);
@@ -405,7 +411,7 @@ const DetailProduk = () => {
     background-color: #f3e8ff;
   }
 `}</style>
-    </div>
+    </div >
   );
 };
 

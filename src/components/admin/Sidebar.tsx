@@ -23,6 +23,9 @@ export default function SidebarHome() {
   };
 
   const handleConfirmLogout = () => {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
     navigate("/admin/login");
   };
 

@@ -12,6 +12,7 @@ export interface Product {
     platformLink?: string;
     category?: string;
     limit?: string | null;
+    stock?: number;
     addOns?: AddOn[];
 }
 
@@ -22,13 +23,32 @@ export interface AddOn {
 }
 
 class ProductService {
-    private endpoint = '/products';
+    private endpoint = '/product';
 
     // Get all products
     async getAll(): Promise<Product[]> {
         try {
             const response = await axiosInstance.get<Product[]>(this.endpoint);
-            return response.data;
+            const list: any = response.data || [];
+            const rawList = list.data || list;
+            return rawList.map((item: any) => ({
+                id: item.Id || item.id,
+                title: item.Name || item.name || item.title, // Map Name to title as per interface
+                image: (item.Images && item.Images.length > 0) ? item.Images[0] : ((item.images && item.images.length > 0) ? item.images[0] : ''),
+                price: typeof item.Price === 'string' ? item.Price : (item.Price?.toString() || item.price?.toString()),
+                priceValue: item.Price || item.price || item.priceValue,
+                date: item.Date || item.date || new Date().toISOString(),
+                description: item.Description || item.description,
+                platformLink: item.LinkProduct || item.link_product || item.platformLink,
+                images: item.Images || item.images,
+                category: item.CategoryId || item.category, // Might need mapping if interface expects string name
+                stock: item.Stock || item.stock,
+                addOns: item.AddOns?.map((addon: any) => ({
+                    id: addon.Id || addon.id,
+                    title: addon.Name || addon.name || addon.title,
+                    price: addon.Price?.toString() || addon.price?.toString()
+                }))
+            }));
         } catch (error) {
             // Fallback to localStorage if API fails
             const saved = localStorage.getItem('admin_products');
@@ -40,7 +60,27 @@ class ProductService {
     async getById(id: number): Promise<Product | null> {
         try {
             const response = await axiosInstance.get<Product>(`${this.endpoint}/${id}`);
-            return response.data;
+            const data: any = response.data;
+            const item = data.data || data;
+
+            return {
+                id: item.Id || item.id,
+                title: item.Name || item.name || item.title,
+                image: (item.Images && item.Images.length > 0) ? item.Images[0] : ((item.images && item.images.length > 0) ? item.images[0] : ''),
+                price: typeof item.Price === 'string' ? item.Price : (item.Price?.toString() || item.price?.toString()),
+                priceValue: item.Price || item.price || item.priceValue,
+                date: item.Date || item.date || new Date().toISOString(),
+                description: item.Description || item.description,
+                platformLink: item.LinkProduct || item.link_product || item.platformLink,
+                images: item.Images || item.images,
+                category: item.CategoryId || item.category,
+                stock: item.Stock || item.stock,
+                addOns: item.AddOns?.map((addon: any) => ({
+                    id: addon.Id || addon.id,
+                    title: addon.Name || addon.name || addon.title,
+                    price: addon.Price?.toString() || addon.price?.toString()
+                }))
+            };
         } catch (error) {
             // Fallback to localStorage
             const saved = localStorage.getItem('admin_products');
@@ -55,7 +95,19 @@ class ProductService {
     // Create new product
     async create(product: Omit<Product, 'id'>): Promise<Product> {
         try {
-            const response = await axiosInstance.post<Product>(this.endpoint, product);
+            const payload = {
+                name: product.title,
+                price: product.priceValue,
+                description: product.description,
+                link_product: product.platformLink,
+                images: product.images,
+                category_id: product.category, // Caution: this might need ID parsing if it's a string name
+                add_ons: product.addOns?.map(addon => ({
+                    name: addon.title,
+                    price: parseInt(addon.price)
+                }))
+            };
+            const response = await axiosInstance.post<Product>(this.endpoint, payload);
             return response.data;
         } catch (error) {
             // Fallback to localStorage
@@ -71,7 +123,13 @@ class ProductService {
     // Update product
     async update(id: number, product: Partial<Product>): Promise<Product> {
         try {
-            const response = await axiosInstance.put<Product>(`${this.endpoint}/${id}`, product);
+            const payload: any = {};
+            if (product.title) payload.name = product.title;
+            if (product.priceValue) payload.price = product.priceValue;
+            if (product.description) payload.description = product.description;
+            // Add other fields as necessary
+
+            const response = await axiosInstance.put<Product>(`${this.endpoint}/${id}`, payload);
             return response.data;
         } catch (error) {
             // Fallback to localStorage
