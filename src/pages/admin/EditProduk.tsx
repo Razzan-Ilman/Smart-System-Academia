@@ -8,12 +8,13 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import RichTextEditor from "../../components/RichTextEditor";
-import { productService } from "../../services/adminService";
+import { productService, addOnService } from "../../services/adminService";
 import type { Product as APIProduct } from "../../services/adminService";
 import '../../styles/rich-text-editor.css';
 
 // TypeScript Interface - Sesuai Kontrak API
 interface AddOn {
+    id?: string; // Optional ID for existing add-ons
     name: string;
     price: number;
     link_add_ons: string;
@@ -175,29 +176,80 @@ export default function AdminEditProduk() {
         setIsAddOnModalOpen(true);
     };
 
-    const handleSaveAddOn = () => {
+    const handleSaveAddOn = async () => {
         if (!tempAddOn.name || tempAddOn.price <= 0) {
-            alert("Nama dan harga add-on wajib diisi");
+            toast.error("Nama dan harga add-on wajib diisi");
             return;
         }
 
-        if (editingIndex !== null) {
-            // Update existing
-            const updated = [...addOns];
-            updated[editingIndex] = tempAddOn;
-            setAddOns(updated);
-        } else {
-            // Add new
-            setAddOns([...addOns, tempAddOn]);
-        }
+        if (!id) return;
 
-        setIsAddOnModalOpen(false);
-        setTempAddOn({ name: "", price: 0, link_add_ons: "" });
-        setEditingIndex(null);
+        try {
+            if (editingIndex !== null) {
+                // Update existing add-on
+                const existingAddOn = addOns[editingIndex];
+
+                if (existingAddOn.id) {
+                    // Update via API if add-on has ID (already exists in backend)
+                    await addOnService.update(existingAddOn.id, {
+                        name: tempAddOn.name,
+                        price: tempAddOn.price,
+                        link_add_ons: tempAddOn.link_add_ons
+                    });
+
+                    // Update local state
+                    const updated = [...addOns];
+                    updated[editingIndex] = { ...tempAddOn, id: existingAddOn.id };
+                    setAddOns(updated);
+
+                    toast.success('Add-on berhasil diperbarui');
+                } else {
+                    // Just update local state if not yet saved to backend
+                    const updated = [...addOns];
+                    updated[editingIndex] = tempAddOn;
+                    setAddOns(updated);
+                }
+            } else {
+                // Create new add-on via API
+                await addOnService.create(id, {
+                    name: tempAddOn.name,
+                    price: tempAddOn.price,
+                    link_add_ons: tempAddOn.link_add_ons
+                });
+
+                // Refresh add-ons from API to get the new ID
+                const product: APIProduct = await productService.getById(id);
+                setAddOns(product.add_ons || []);
+
+                toast.success('Add-on berhasil ditambahkan');
+            }
+
+            setIsAddOnModalOpen(false);
+            setTempAddOn({ name: "", price: 0, link_add_ons: "" });
+            setEditingIndex(null);
+        } catch (error) {
+            console.error('Failed to save add-on:', error);
+            toast.error('Gagal menyimpan add-on');
+        }
     };
 
-    const handleDeleteAddOn = (index: number) => {
-        setAddOns(addOns.filter((_, i) => i !== index));
+    const handleDeleteAddOn = async (index: number) => {
+        const addOnToDelete = addOns[index];
+
+        if (addOnToDelete.id) {
+            // Delete via API if add-on has ID
+            try {
+                await addOnService.delete(addOnToDelete.id);
+                setAddOns(addOns.filter((_, i) => i !== index));
+                toast.success('Add-on berhasil dihapus');
+            } catch (error) {
+                console.error('Failed to delete add-on:', error);
+                toast.error('Gagal menghapus add-on');
+            }
+        } else {
+            // Just remove from local state if not yet saved to backend
+            setAddOns(addOns.filter((_, i) => i !== index));
+        }
     };
 
     const handleCloseModal = () => {

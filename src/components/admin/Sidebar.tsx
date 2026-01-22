@@ -11,6 +11,7 @@ import {
 } from "@ant-design/icons";
 
 import ConfirmModal from "./ConfirmModal";
+import { authService } from "../../services/adminService";
 
 export default function SidebarHome() {
   const location = useLocation();
@@ -23,7 +24,7 @@ export default function SidebarHome() {
   };
 
   const handleConfirmLogout = () => {
-    localStorage.removeItem('admin_token');
+    authService.logout();
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
     navigate("/admin/login");

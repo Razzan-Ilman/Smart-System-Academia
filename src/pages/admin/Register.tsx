@@ -34,6 +34,7 @@ const AdminRegister: React.FC = () => {
     try {
       await authService.register({
         email: email,
+        name: name,
         username: username,
         password: password,
         confirmPassword: confirmPassword,

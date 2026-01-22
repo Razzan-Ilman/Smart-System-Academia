@@ -1,57 +1,90 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     MenuOutlined,
     EditOutlined,
     SearchOutlined,
-    UnorderedListOutlined
+    UnorderedListOutlined,
+    LoadingOutlined
 } from "@ant-design/icons";
+import { transactionService } from "../../services/adminService";
+import { toast } from "react-hot-toast";
 
 interface Transaction {
-    id: number;
+    id: string;
     name: string;
-    method: string;
-}
-
-interface TransactionDetail {
-    id: number;
-    trxId: string;
-    name: string;
-    product: string;
-    nominal: string;
-    method: string;
-    status: string;
-    date: string;
+    email: string;
+    phone_number: string;
+    payment_type: string;
+    product_id: string;
+    add_ons_ids?: string[];
+    status?: string;
+    created_at?: string;
+    updated_at?: string;
+    product?: {
+        id: string;
+        name: string;
+        price: number;
+    };
+    total_amount?: number;
 }
 
 export default function AdminListTransaksi() {
-    const [transactions] = useState<Transaction[]>([
-        { id: 1, name: "Transaksi Pembelian Kursus React", method: "Transfer Bank" },
-        { id: 2, name: "Transaksi Pembelian Buku Design System", method: "E-Wallet" },
-        { id: 3, name: "Transaksi Top-Up Saldo Pelatihan", method: "Transfer Bank" },
-        { id: 4, name: "Transaksi Sertifikat Web Dev", method: "Midtrans" },
-        { id: 5, name: "Transaksi Paket Masterclass Node.js", method: "E-Wallet" },
-    ]);
-
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [showFilter, setShowFilter] = useState(false);
     const [filterStatus, setFilterStatus] = useState<string>("All");
     const [filterMethod, setFilterMethod] = useState<string>("All");
 
-    // Detail transaction data
-    const transactionDetails: TransactionDetail[] = [
-        { id: 1, trxId: "TRX001", name: "John Doe", product: "Kursus React", nominal: "Rp 500.000", method: "Transfer Bank", status: "Success", date: "2024-01-15" },
-        { id: 2, trxId: "TRX002", name: "Jane Smith", product: "Buku Design System", nominal: "Rp 150.000", method: "E-Wallet", status: "Success", date: "2024-01-16" },
-        { id: 3, trxId: "TRX003", name: "Bob Johnson", product: "Top-Up Saldo", nominal: "Rp 1.000.000", method: "Transfer Bank", status: "Pending", date: "2024-01-17" },
-        { id: 4, trxId: "TRX004", name: "Alice Brown", product: "Sertifikat Web Dev", nominal: "Rp 300.000", method: "Midtrans", status: "Success", date: "2024-01-18" },
-        { id: 5, trxId: "TRX005", name: "Charlie Wilson", product: "Paket Masterclass", nominal: "Rp 750.000", method: "E-Wallet", status: "Failed", date: "2024-01-19" },
-    ];
+    // Fetch transactions from API
+    useEffect(() => {
+        const fetchTransactions = async () => {
+            try {
+                setLoading(true);
+                const response = await transactionService.getAll();
+                console.log('Transaction API Response:', response);
 
-    const filteredTransactions = transactionDetails.filter((detail) => {
-        const matchSearch = detail.name.toLowerCase().includes(search.toLowerCase()) ||
-            detail.product.toLowerCase().includes(search.toLowerCase()) ||
-            detail.trxId.toLowerCase().includes(search.toLowerCase());
-        const matchStatus = filterStatus === "All" || detail.status === filterStatus;
-        const matchMethod = filterMethod === "All" || detail.method === filterMethod;
+                // Handle different response structures
+                const data = response.data || response;
+                setTransactions(Array.isArray(data) ? data : []);
+            } catch (error: any) {
+                console.error('Error fetching transactions:', error);
+                toast.error(error.response?.data?.message || 'Gagal memuat data transaksi');
+                setTransactions([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTransactions();
+    }, []);
+
+    // Format currency
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0
+        }).format(amount);
+    };
+
+    // Format date
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString('id-ID', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    };
+
+    const filteredTransactions = transactions.filter((transaction) => {
+        const matchSearch = transaction.name.toLowerCase().includes(search.toLowerCase()) ||
+            transaction.email.toLowerCase().includes(search.toLowerCase()) ||
+            transaction.id.toLowerCase().includes(search.toLowerCase()) ||
+            (transaction.product?.name || '').toLowerCase().includes(search.toLowerCase());
+        const matchStatus = filterStatus === "All" || transaction.status === filterStatus;
+        const matchMethod = filterMethod === "All" || transaction.payment_type === filterMethod;
         return matchSearch && matchStatus && matchMethod;
     });
 
@@ -102,7 +135,7 @@ export default function AdminListTransaksi() {
                                     <div className="px-4 py-2">
                                         <p className="text-xs font-bold text-gray-500 uppercase mb-2">Metode</p>
                                         <div className="space-y-1">
-                                            {["All", "Transfer Bank", "E-Wallet", "Midtrans"].map((method) => (
+                                            {["All", "qris", "bank_transfer", "e-wallet"].map((method) => (
                                                 <button
                                                     key={method}
                                                     onClick={() => setFilterMethod(method)}
@@ -111,7 +144,7 @@ export default function AdminListTransaksi() {
                                                         : 'text-gray-700 hover:bg-gray-50'
                                                         }`}
                                                 >
-                                                    {method}
+                                                    {method === "All" ? "All" : method.toUpperCase()}
                                                 </button>
                                             ))}
                                         </div>
@@ -148,27 +181,34 @@ export default function AdminListTransaksi() {
                     </div>
 
                     {/* Table Rows */}
-                    {filteredTransactions.length > 0 ? (
-                        filteredTransactions.map((detail, index) => (
+                    {loading ? (
+                        <div className="p-16 text-center">
+                            <LoadingOutlined className="text-4xl text-purple-500 animate-spin" />
+                            <p className="mt-4 text-gray-500 font-medium">Memuat data transaksi...</p>
+                        </div>
+                    ) : filteredTransactions.length > 0 ? (
+                        filteredTransactions.map((transaction, index) => (
                             <div
-                                key={detail.id}
+                                key={transaction.id}
                                 className="grid grid-cols-12 items-center p-6 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition"
                             >
                                 <div className="col-span-1 pl-4 font-bold text-gray-800">{index + 1}</div>
-                                <div className="col-span-1 font-mono text-sm text-blue-600">{detail.trxId}</div>
-                                <div className="col-span-2 font-bold text-gray-800">{detail.name}</div>
-                                <div className="col-span-2 text-gray-700">{detail.product}</div>
-                                <div className="col-span-1 text-center font-semibold text-green-600">{detail.nominal}</div>
-                                <div className="col-span-1 text-center text-gray-600">{detail.method}</div>
+                                <div className="col-span-1 font-mono text-sm text-blue-600">{transaction.id.substring(0, 8)}</div>
+                                <div className="col-span-2 font-bold text-gray-800">{transaction.name}</div>
+                                <div className="col-span-2 text-gray-700">{transaction.product?.name || '-'}</div>
+                                <div className="col-span-1 text-center font-semibold text-green-600">
+                                    {transaction.total_amount ? formatCurrency(transaction.total_amount) : '-'}
+                                </div>
+                                <div className="col-span-1 text-center text-gray-600">{transaction.payment_type.toUpperCase()}</div>
                                 <div className="col-span-1 text-center">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${detail.status === 'Success' ? 'bg-green-100 text-green-700' :
-                                        detail.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                                            'bg-red-100 text-red-700'
+                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${transaction.status === 'Success' || transaction.status === 'settlement' ? 'bg-green-100 text-green-700' :
+                                            transaction.status === 'Pending' || transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-red-100 text-red-700'
                                         }`}>
-                                        {detail.status}
+                                        {transaction.status || 'Pending'}
                                     </span>
                                 </div>
-                                <div className="col-span-2 text-center text-gray-600">{detail.date}</div>
+                                <div className="col-span-2 text-center text-gray-600">{formatDate(transaction.created_at)}</div>
                                 <div className="col-span-1 flex justify-center">
                                     <button className="p-2 text-gray-700 hover:text-blue-600 transition hover:scale-110 active:scale-90 bg-white rounded-lg shadow-sm border border-gray-50">
                                         <EditOutlined className="text-2xl" />
@@ -178,7 +218,7 @@ export default function AdminListTransaksi() {
                         ))
                     ) : (
                         <div className="p-16 text-center text-gray-400 font-medium">
-                            Data transaksi "{search}" tidak ditemukan
+                            {search ? `Data transaksi "${search}" tidak ditemukan` : 'Belum ada data transaksi'}
                         </div>
                     )}
 
@@ -203,33 +243,40 @@ export default function AdminListTransaksi() {
                     </div>
 
                     {/* Transaction Cards */}
-                    {filteredTransactions.length > 0 ? (
-                        filteredTransactions.map((detail, index) => (
+                    {loading ? (
+                        <div className="p-10 text-center bg-white rounded-xl border border-gray-200">
+                            <LoadingOutlined className="text-3xl text-purple-500 animate-spin" />
+                            <p className="mt-3 text-gray-500 font-medium text-sm">Memuat data...</p>
+                        </div>
+                    ) : filteredTransactions.length > 0 ? (
+                        filteredTransactions.map((transaction, index) => (
                             <div
-                                key={detail.id}
+                                key={transaction.id}
                                 className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm hover:shadow-md transition"
                             >
                                 <div className="grid grid-cols-12 gap-2 items-center">
                                     {/* Name & Product Info */}
                                     <div className="col-span-5 min-w-0">
-                                        <p className="text-xs font-bold text-gray-500 mb-0.5">{index + 1}. {detail.trxId}</p>
-                                        <p className="font-bold text-sm text-gray-800 truncate">{detail.name}</p>
-                                        <p className="text-xs text-gray-600 truncate">{detail.product}</p>
+                                        <p className="text-xs font-bold text-gray-500 mb-0.5">{index + 1}. {transaction.id.substring(0, 8)}</p>
+                                        <p className="font-bold text-sm text-gray-800 truncate">{transaction.name}</p>
+                                        <p className="text-xs text-gray-600 truncate">{transaction.product?.name || '-'}</p>
                                     </div>
 
                                     {/* Nominal */}
                                     <div className="col-span-3 text-center">
-                                        <p className="font-bold text-xs text-green-600 leading-tight">{detail.nominal}</p>
-                                        <p className="text-xs text-gray-500 mt-0.5 truncate">{detail.method}</p>
+                                        <p className="font-bold text-xs text-green-600 leading-tight">
+                                            {transaction.total_amount ? formatCurrency(transaction.total_amount) : '-'}
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-0.5 truncate">{transaction.payment_type.toUpperCase()}</p>
                                     </div>
 
                                     {/* Status */}
                                     <div className="col-span-2 flex justify-center">
-                                        <span className={`px-1.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${detail.status === 'Success' ? 'bg-green-100 text-green-700' :
-                                                detail.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                                        <span className={`px-1.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${transaction.status === 'Success' || transaction.status === 'settlement' ? 'bg-green-100 text-green-700' :
+                                                transaction.status === 'Pending' || transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
                                                     'bg-red-100 text-red-700'
                                             }`}>
-                                            {detail.status}
+                                            {transaction.status || 'Pending'}
                                         </span>
                                     </div>
 
@@ -244,7 +291,7 @@ export default function AdminListTransaksi() {
                         ))
                     ) : (
                         <div className="p-10 text-center text-gray-400 font-medium bg-white rounded-xl border border-gray-200">
-                            Data transaksi "{search}" tidak ditemukan
+                            {search ? `Data transaksi "${search}" tidak ditemukan` : 'Belum ada data transaksi'}
                         </div>
                     )}
                 </div>

@@ -87,7 +87,7 @@ export default function EditAddOns() {
 
         try {
             setSaving(true);
-            await addOnService.update(productId, addOnId, payload);
+            await addOnService.update(addOnId, payload);
             toast.success('Add-on berhasil diperbarui');
             navigate(`/admin/produk/edit/${productId}`);
         } catch (error) {
@@ -173,9 +173,10 @@ export default function EditAddOns() {
                 </button>
                 <button
                     onClick={handleSave}
-                    className="px-10 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg active:scale-95"
+                    disabled={saving}
+                    className={`px-10 py-3 rounded-xl font-bold transition shadow-lg active:scale-95 ${saving ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
                 >
-                    Update
+                    {saving ? 'Menyimpan...' : 'Update'}
                 </button>
             </div>
         </div>

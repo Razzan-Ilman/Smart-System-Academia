@@ -74,25 +74,28 @@ export const productService = {
     },
 
     // Create new product
-    create: async (data: Product) => {
-        const payload = {
-            name: data.name,
-            description: data.description,
-            price: data.price,
-            link_product: data.link_product,
-            images: data.images,
-            category_id: data.category_id,
-            stock: data.stock,
-            add_ons: data.add_ons?.map(addon => ({
-                name: addon.name,
-                price: addon.price,
-                link_add_ons: addon.link_add_ons
-            }))
+    create: async (data: Partial<Product>) => {
+        // Transform to PascalCase for backend
+        const payload: any = {
+            Name: data.name,
+            Description: data.description || "",
+            Price: data.price,
+            LinkProduct: data.link_product,
+            Images: data.images || [],
+            CategoryId: data.category_id,
+            Stock: data.stock || 0,
+            AddOns: data.add_ons?.map(addon => ({
+                Name: addon.name,
+                Price: addon.price,
+                LinkAddOns: addon.link_add_ons || ""
+            })) || []
         };
+
         console.log('--- API REQUEST DEBUG ---');
         console.log('Method: POST');
         console.log('URL: /product');
-        console.log('Payload:', payload);
+        console.log('Payload (PascalCase):', JSON.stringify(payload, null, 2));
+
         const response = await axiosInstance.post('/product', payload);
         return response.data;
     },
@@ -108,6 +111,15 @@ export const productService = {
         if (data.images) payload.images = data.images;
         if (data.category_id) payload.category_id = data.category_id;
         if (data.stock) payload.stock = data.stock;
+
+        // Include add_ons if present (for batch update attempt if backend supports it)
+        if (data.add_ons) {
+            payload.add_ons = data.add_ons.map(addon => ({
+                name: addon.name,
+                price: addon.price,
+                link_add_ons: addon.link_add_ons
+            }));
+        }
 
         const response = await axiosInstance.put(`/product/${id}`, payload);
         return response.data;
@@ -136,29 +148,41 @@ export const addOnService = {
 
     // Create new add-on
     create: async (productId: string, data: AddOn) => {
-        const payload = {
-            name: data.name,
-            price: data.price,
-            link_add_ons: data.link_add_ons
+        // Backend expects snake_case with product_id and add_ons array
+        const finalPayload = {
+            product_id: productId,
+            add_ons: [
+                {
+                    name: data.name,
+                    price: data.price,
+                    link_add_ons: data.link_add_ons
+                }
+            ]
         };
-        const response = await axiosInstance.post(`/product/${productId}/add-ons`, payload);
+
+        const response = await axiosInstance.post(`/addons`, finalPayload);
         return response.data;
     },
 
     // Update add-on
-    update: async (productId: string, addOnId: string, data: Partial<AddOn>) => {
+    update: async (addOnId: string, data: Partial<AddOn>) => {
+        // Postman "Update Addons By Id"
+        // URL: {{local_url}}/addons/:id
+        // Body: { name, price, link_add_ons }
         const payload: any = {};
         if (data.name) payload.name = data.name;
         if (data.price) payload.price = data.price;
         if (data.link_add_ons) payload.link_add_ons = data.link_add_ons;
 
-        const response = await axiosInstance.put(`/product/${productId}/add-ons/${addOnId}`, payload);
+        const response = await axiosInstance.put(`/addons/${addOnId}`, payload);
         return response.data;
     },
 
     // Delete add-on
-    delete: async (productId: string, addOnId: string) => {
-        const response = await axiosInstance.delete(`/product/${productId}/add-ons/${addOnId}`);
+    delete: async (addOnId: string) => {
+        // Postman "Delete Add Ons"
+        // URL: {{local_url}}/addons/:id
+        const response = await axiosInstance.delete(`/addons/${addOnId}`);
         return response.data;
     },
 };
@@ -189,9 +213,9 @@ export const categoryService = {
 
     // Create new category
     create: async (data: Category) => {
+        // Backend only expects 'name' field
         const payload = {
-            name: data.name,
-            description: data.description
+            name: data.name
         };
         const response = await axiosInstance.post('/category', payload);
         return response.data;
@@ -227,34 +251,59 @@ export const authService = {
         };
         const response = await axiosInstance.post('/user/login', payload);
         const data = response.data;
-        const token = data?.access_token || data?.data?.access_token || data?.token || data?.data?.token;
+
+        // Store access token (backend returns accessToken in camelCase)
+        const token = data?.data?.accessToken || data?.accessToken || data?.access_token || data?.data?.access_token || data?.token || data?.data?.token;
         if (token) {
             localStorage.setItem('admin_token', token);
         }
+
+        // Store refresh token (backend returns refreshToken in camelCase)
+        const refreshToken = data?.data?.refreshToken || data?.refreshToken || data?.refresh_token || data?.data?.refresh_token;
+        if (refreshToken) {
+            localStorage.setItem('refresh_token', refreshToken);
+        }
+
         return response.data;
     },
 
+    // Refresh Token
+    refreshToken: async () => {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (!refreshToken) {
+            throw new Error('No refresh token available');
+        }
+
+        const response = await axiosInstance.put('/user/refresh-token', {
+            refreshToken: refreshToken
+        });
+
+        const data = response.data;
+        // Backend returns accessToken and refreshToken in camelCase
+        const newAccessToken = data?.data?.accessToken || data?.accessToken || data?.access_token || data?.data?.access_token;
+        const newRefreshToken = data?.data?.refreshToken || data?.refreshToken || data?.refresh_token || data?.data?.refresh_token;
+
+        if (newAccessToken) {
+            localStorage.setItem('admin_token', newAccessToken);
+        }
+
+        if (newRefreshToken) {
+            localStorage.setItem('refresh_token', newRefreshToken);
+        }
+
+        return newAccessToken;
+    },
+
     // Register
-    register: async (data: { email: string; password: string; confirmPassword: string; username: string; role: string }) => {
-        // STRATEGY: "Username-as-Name Kitchen Sink"
-        // Problem: Postman fails with 'uni_users_name' duplicate error even with strict schema, implying hidden 'name' column collision (likely empty/null).
-        // Solution: Force-feed the unique 'username' into all possible 'name' fields. 
-        // If the backend reads ANY of these, it will get a unique value, avoiding the constraint violation.
+    register: async (data: { email: string; name: string; username: string; password: string; confirmPassword: string; role: string }) => {
+        // Match exact backend API schema
         const payload = {
             email: data.email,
+            name: data.name,
             username: data.username,
             password: data.password,
             confirmPassword: data.confirmPassword,
-            role: data.role,
-
-            // Potential keys for the 'name' column
-            name: data.username,
-            Name: data.username,
-            fullname: data.username,
-            fullName: data.username,
-            full_name: data.username,
-            nama: data.username,
-            Nama: data.username
+            role: data.role
         };
 
         const response = await axiosInstance.post('/user/register', payload);
@@ -264,11 +313,74 @@ export const authService = {
     // Logout
     logout: () => {
         localStorage.removeItem('admin_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user_data');
     },
 
     // Check if user is authenticated
     isAuthenticated: () => {
         return !!localStorage.getItem('admin_token');
+    },
+
+    // Get user data
+    getUserData: () => {
+        const userData = localStorage.getItem('user_data');
+        return userData ? JSON.parse(userData) : null;
+    },
+
+    // Clear user data
+    clearUserData: () => {
+        localStorage.removeItem('user_data');
+    },
+};
+
+// Image API Services
+export const imageService = {
+    // Upload images for a product
+    uploadImages: async (productId: string, imageUrls: string[]) => {
+        const payload = {
+            product_id: productId,
+            image_url: imageUrls
+        };
+        const response = await axiosInstance.post('/image', payload);
+        return response.data;
+    },
+};
+
+// Transaction API Services
+export const transactionService = {
+    // Get all transactions
+    getAll: async () => {
+        const response = await axiosInstance.get('/transaksi');
+        return response.data;
+    },
+
+    // Get transaction by ID
+    getById: async (id: string) => {
+        const response = await axiosInstance.get(`/transaksi/${id}`);
+        return response.data;
+    },
+
+    // Create new transaction
+    create: async (data: {
+        name: string;
+        email: string;
+        phone_number: string;
+        payment_type: string;
+        product_id: string;
+        add_ons_ids?: string[];
+    }) => {
+        const response = await axiosInstance.post('/transaksi', data);
+        return response.data;
+    },
+
+    // Confirm payment
+    confirmPayment: async (id: string, originalReferenceNo: string) => {
+        const response = await axiosInstance.put(
+            `/transaksi/${id}/confirm-payment`,
+            { originalReferenceNo }
+        );
+        return response.data;
     },
 };
 
@@ -277,4 +389,6 @@ export default {
     addOn: addOnService,
     category: categoryService,
     auth: authService,
+    image: imageService,
+    transaction: transactionService,
 };

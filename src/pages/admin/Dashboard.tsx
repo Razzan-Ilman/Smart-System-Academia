@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { EyeOutlined, EyeInvisibleOutlined, UserOutlined } from "@ant-design/icons";
+import { authService } from "../../services/adminService";
 
 // Data per tahun
 const salesByYear: Record<number, { name: string; value: number }[]> = {
@@ -104,16 +105,20 @@ const profitYearlyMode = [
 export default function Dashboard() {
   // State navbar
   const [showIncome, setShowIncome] = useState(true);
+  const [userName, setUserName] = useState("Admin");
 
   // State chart
   const [chartType, setChartType] = useState<'penjualan' | 'profit'>('penjualan');
   const [selectedYear, setSelectedYear] = useState<number>(2027);
   const [isYearlyView, setIsYearlyView] = useState(false);
 
-  // Data user dan income untuk navbar
-  const user = {
-    name: "Abare no Ken",
-  };
+  // Load user data from localStorage
+  useEffect(() => {
+    const userData = authService.getUserData();
+    if (userData && userData.name) {
+      setUserName(userData.name);
+    }
+  }, []);
 
   const income = 12500000;
 
@@ -140,7 +145,7 @@ export default function Dashboard() {
 
           <div className="flex-1 min-w-0">
             <div className="bg-white rounded-lg px-3 md:px-4 py-2 shadow font-semibold text-gray-700 text-sm md:text-base truncate">
-              Nama: {user.name}
+              Nama: {userName}
             </div>
           </div>
         </div>
@@ -173,8 +178,8 @@ export default function Dashboard() {
             <button
               onClick={() => setIsYearlyView(!isYearlyView)}
               className={`shadow-[0_4px_15px_rgba(0,0,0,0.1)] rounded-xl px-4 md:px-6 py-2 border border-gray-50 flex items-center justify-center font-bold transition w-full sm:w-auto min-w-[120px] text-sm md:text-base ${isYearlyView
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
                 }`}
             >
               {isYearlyView ? 'Grafik Tahun' : selectedYear}
@@ -187,8 +192,8 @@ export default function Dashboard() {
                     key={year}
                     onClick={() => setSelectedYear(year)}
                     className={`flex-1 sm:flex-none px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition ${selectedYear === year
-                        ? 'bg-gray-800 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-gray-800 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                   >
                     {year}
@@ -203,8 +208,8 @@ export default function Dashboard() {
             <button
               onClick={() => setChartType('profit')}
               className={`flex-1 sm:flex-none px-4 md:px-8 py-2 rounded-xl font-semibold transition shadow-[0_4px_15px_rgba(0,0,0,0.1)] border border-gray-50 text-sm md:text-base ${chartType === 'profit'
-                  ? 'bg-white text-blue-600'
-                  : 'bg-white text-gray-500 hover:bg-gray-50'
+                ? 'bg-white text-blue-600'
+                : 'bg-white text-gray-500 hover:bg-gray-50'
                 }`}
             >
               Profit
@@ -212,8 +217,8 @@ export default function Dashboard() {
             <button
               onClick={() => setChartType('penjualan')}
               className={`flex-1 sm:flex-none px-4 md:px-8 py-2 rounded-xl font-semibold transition shadow-[0_4px_15px_rgba(0,0,0,0.1)] border border-gray-50 text-sm md:text-base ${chartType === 'penjualan'
-                  ? 'bg-white text-blue-600'
-                  : 'bg-white text-gray-500 hover:bg-gray-50'
+                ? 'bg-white text-blue-600'
+                : 'bg-white text-gray-500 hover:bg-gray-50'
                 }`}
             >
               Penjualan

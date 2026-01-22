@@ -202,6 +202,22 @@ export default function AdminTambahProduk() {
             add_ons: addOns
         };
 
+        // Debug logging
+        console.log('=== FORM DATA DEBUG ===');
+        console.log('name:', name);
+        console.log('price:', price, 'type:', typeof price);
+        console.log('categoryId:', categoryId, 'type:', typeof categoryId);
+        console.log('linkProduct:', linkProduct);
+        console.log('stock:', stock);
+        console.log('images:', images);
+        console.log('addOns:', addOns);
+        console.log('=== PAYLOAD ===');
+        console.log(JSON.stringify(payload, null, 2));
+        console.log('=== PAYLOAD KEYS ===');
+        console.log('payload.category_id:', payload.category_id);
+        console.log('payload.link_product:', payload.link_product);
+        console.log('payload.price:', payload.price);
+
         try {
             setSaving(true);
             console.log('Creating product with payload:', payload);

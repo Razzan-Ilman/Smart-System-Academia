@@ -1,13 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { EyeOutlined, EyeInvisibleOutlined, UserOutlined } from "@ant-design/icons";
+import { authService } from "../../services/adminService";
 
 export default function Navbar() {
   const [showIncome, setShowIncome] = useState(true);
+  const [userName, setUserName] = useState("Admin");
 
-  // simulasi data login
-  const user = {
-    name: "Abare no Ken",
-  };
+  useEffect(() => {
+    // Get user data from localStorage
+    const userData = authService.getUserData();
+    if (userData && userData.name) {
+      setUserName(userData.name);
+    }
+  }, []);
 
   const income = 12500000;
 
@@ -29,7 +34,7 @@ export default function Navbar() {
 
         <div className="flex-1">
           <div className="bg-white rounded-lg px-4 py-2 shadow font-semibold text-gray-700">
-            Nama: {user.name}
+            Nama: {userName}
           </div>
         </div>
       </div>

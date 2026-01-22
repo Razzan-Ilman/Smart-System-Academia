@@ -1,12 +1,9 @@
-import { productService, categoryService, addOnService } from './adminService';
-import type { Product, Category, AddOn } from './adminService';
+import { productService, categoryService } from './adminService';
+import type { Product, Category } from './adminService';
 
 const USE_API = import.meta.env.VITE_USE_API === 'true';
 
-// Helper untuk format harga
-const formatPrice = (value: number) => {
-    return `Rp ${value.toLocaleString('id-ID')}`;
-};
+
 
 // Product Service dengan fallback localStorage
 export const productServiceWithFallback = {

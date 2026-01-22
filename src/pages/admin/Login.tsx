@@ -27,6 +27,14 @@ const AdminLogin: React.FC = () => {
         localStorage.setItem("token", token);
       }
 
+      // Store user data for display purposes
+      const userData = {
+        name: data?.user?.name || data?.data?.user?.name || data?.name || "Admin",
+        email: data?.user?.email || data?.data?.user?.email || data?.email || email,
+        role: data?.user?.role || data?.data?.user?.role || data?.role || "admin"
+      };
+      localStorage.setItem("user_data", JSON.stringify(userData));
+
       toast.success("Login berhasil!");
       navigate("/admin/dashboard");
 
