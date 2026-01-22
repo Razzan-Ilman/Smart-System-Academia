@@ -34,7 +34,7 @@ function App() {
         <Routes>
           {/* USER */}
           <Route path="/" element={<Home />} />
-          <Route path="/produk/detail" element={<DetailProduk />} />
+          <Route path="/produk/:id" element={<DetailProduk />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/qris" element={<Qris />} />
           <Route path="/virtual-account" element={<VirtualAccount />} />

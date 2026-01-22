@@ -16,13 +16,13 @@ const Navbar = () => {
   ];
 
   return (
-    <>
-      <nav className="sticky top-0 z-50 flex items-center justify-between px-5 sm:px-9 py-2 bg-white/30 backdrop-blur-md border-b border-white/20">
+<>
+      <nav className="sticky top-0 z-50 flex items-center justify-between px-3 sm:px-5 md:px-9 py-1.5 sm:py-2 bg-white/30 backdrop-blur-md border-b border-white/20">
         {/* Logo */}
         <img
           src={logo}
           alt="logo"
-          className="w-[96px] h-auto object-contain drop-shadow-xl"
+          className="w-16 sm:w-20 md:w-[96px] h-auto object-contain drop-shadow-xl"
         />
 
         {/* Desktop Menu */}
@@ -43,7 +43,7 @@ const Navbar = () => {
         <div className="flex md:hidden items-center gap-4">
           <Button
             type="text"
-            icon={<MenuOutlined className="text-2xl text-gray-800" />}
+            icon={<MenuOutlined className="text-xl sm:text-2xl text-gray-800" />}
             onClick={showDrawer}
           />
         </div>

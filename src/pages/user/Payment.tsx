@@ -12,6 +12,7 @@ const Payment = () => {
   const [selectedPayment, setSelectedPayment] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreeMarketing, setAgreeMarketing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Get dynamic data from DetailProduk
   const stateData = location.state || {};
@@ -28,11 +29,7 @@ const Payment = () => {
     }
   ];
 
-  const addOns = stateData.addOns || [
-    { id: 1, name: 'Gift Wrapping Premium', price: 25000, selected: true },
-    { id: 2, name: 'Express Shipping', price: 35000, selected: true },
-    { id: 3, name: 'Insurance Protection', price: 15000, selected: true }
-  ];
+  const addOns = stateData.addOns || [];
 
   const [buyerInfo, setBuyerInfo] = useState({
     email: '',
@@ -184,7 +181,7 @@ const Payment = () => {
   const calculateAddOns = () =>
     addOns.reduce((sum: number, a: any) => sum + a.price, 0);
 
-  const discount = 50000;
+  const discount = 0;
   const convenienceFee = 5000;
 
   const totalPrice =
@@ -196,6 +193,101 @@ const Payment = () => {
       currency: "IDR",
       minimumFractionDigits: 0,
     }).format(value);
+
+  // ================= API TRANSACTION HANDLER =================
+  const createTransaction = async () => {
+    setIsProcessing(true);
+    
+    try {
+      const payload = {
+        name: buyerInfo.name,
+        email: buyerInfo.email,
+        phone_number: buyerInfo.phone,
+        payment_type: selectedPayment,
+        product_id: stateData.productId,
+        add_ons_ids: stateData.selectedAddOnsIds || []
+      };
+
+      const response = await fetch('https://ssa-payment.lskk.co.id/api/v1/transaksi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Gagal membuat transaksi');
+      }
+
+      // Success - Navigate based on payment type
+      const orderId = result.data?.order_id || `ORD-${Date.now()}`;
+      
+      if (selectedPayment === "qris") {
+        navigate("/qris", {
+          state: {
+            amount: totalPrice,
+            email: buyerInfo.email,
+            name: buyerInfo.name,
+            phone: buyerInfo.phone,
+            orderId: orderId,
+            items: cartItems,
+            transactionData: result.data
+          }
+        });
+        return;
+      }
+
+      const virtualAccountMethods = [
+        "bca", "mandiri", "bri", "permata", "bsi", "bni",
+        "cimb", "mandiri_va", "muamalat", "sinarmas", "bnc", "maybank"
+      ];
+
+      const minimarketMethods = ["indomaret", "alfamart"];
+
+      if (virtualAccountMethods.includes(selectedPayment)) {
+        navigate("/virtual-account", {
+          state: {
+            amount: totalPrice,
+            email: buyerInfo.email,
+            name: buyerInfo.name,
+            phone: buyerInfo.phone,
+            orderId: orderId,
+            paymentMethod: selectedPayment,
+            items: cartItems,
+            transactionData: result.data
+          }
+        });
+        return;
+      }
+
+      if (minimarketMethods.includes(selectedPayment)) {
+        navigate("/minimarket-payment", {
+          state: {
+            amount: totalPrice,
+            email: buyerInfo.email,
+            name: buyerInfo.name,
+            phone: buyerInfo.phone,
+            orderId: orderId,
+            paymentMethod: selectedPayment,
+            items: cartItems,
+            transactionData: result.data
+          }
+        });
+        return;
+      }
+
+      toast.error("Metode pembayaran ini belum tersedia");
+
+    } catch (error: any) {
+      console.error('Transaction error:', error);
+      toast.error(error.message || 'Gagal membuat transaksi. Silakan coba lagi.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // ================= CHECKOUT HANDLER =================
   const handleCheckout = () => {
@@ -214,61 +306,13 @@ const Payment = () => {
       return;
     }
 
-    // Handle QRIS Payment
-    if (selectedPayment === "qris") {
-      navigate("/qris", {
-        state: {
-          amount: totalPrice,
-          email: buyerInfo.email,
-          name: buyerInfo.name,
-          phone: buyerInfo.phone,
-          orderId: `ORD-${Date.now()}`,
-          items: cartItems
-        }
-      });
+    if (!stateData.productId) {
+      toast.error('Data produk tidak valid. Silakan kembali ke halaman produk.');
       return;
     }
 
-    // Handle Virtual Account & Other Payments
-    const virtualAccountMethods = [
-      "bca", "mandiri", "bri", "permata", "bsi", "bni",
-      "cimb", "mandiri_va", "muamalat", "sinarmas", "bnc", "maybank"
-    ];
-
-    const minimarketMethods = ["indomaret", "alfamart"];
-
-    if (virtualAccountMethods.includes(selectedPayment)) {
-      navigate("/virtual-account", {
-        state: {
-          amount: totalPrice,
-          email: buyerInfo.email,
-          name: buyerInfo.name,
-          phone: buyerInfo.phone,
-          orderId: `ORD-${Date.now()}`,
-          paymentMethod: selectedPayment,
-          items: cartItems
-        }
-      });
-      return;
-    }
-
-    if (minimarketMethods.includes(selectedPayment)) {
-      navigate("/minimarket-payment", {
-        state: {
-          amount: totalPrice,
-          email: buyerInfo.email,
-          name: buyerInfo.name,
-          phone: buyerInfo.phone,
-          orderId: `ORD-${Date.now()}`,
-          paymentMethod: selectedPayment,
-          items: cartItems
-        }
-      });
-      return;
-    }
-
-    // Jika metode pembayaran lain yang belum diintegrasikan
-    alert("Metode pembayaran ini belum tersedia");
+    // Call API to create transaction
+    createTransaction();
   };
 
   return (
@@ -294,14 +338,18 @@ const Payment = () => {
                   <span>Subtotal</span>
                   <span className="font-semibold">{formatRupiah(calculateSubtotal())}</span>
                 </div>
-                <div className="flex justify-between text-gray-700">
-                  <span>Discount</span>
-                  <span className="font-semibold text-green-600">-{formatRupiah(discount)}</span>
-                </div>
-                <div className="flex justify-between text-gray-700">
-                  <span>Add-Ons</span>
-                  <span className="font-semibold">{formatRupiah(calculateAddOns())}</span>
-                </div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-gray-700">
+                    <span>Discount</span>
+                    <span className="font-semibold text-green-600">-{formatRupiah(discount)}</span>
+                  </div>
+                )}
+                {addOns.length > 0 && (
+                  <div className="flex justify-between text-gray-700">
+                    <span>Add-Ons</span>
+                    <span className="font-semibold">{formatRupiah(calculateAddOns())}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-700 pb-2 border-b border-gray-200">
                   <span>Convenience fee</span>
                   <span className="font-semibold">{formatRupiah(convenienceFee)}</span>
@@ -475,13 +523,13 @@ const Payment = () => {
             {/* Checkout Button */}
             <button
               onClick={handleCheckout}
-              disabled={!agreeTerms || !selectedPayment}
-              className={`w-full py-4 lg:py-5 rounded-2xl font-bold text-base lg:text-lg shadow-xl transition-all transform hover:scale-[1.02] ${agreeTerms && selectedPayment
+              disabled={!agreeTerms || !selectedPayment || isProcessing}
+              className={`w-full py-4 lg:py-5 rounded-2xl font-bold text-base lg:text-lg shadow-xl transition-all transform hover:scale-[1.02] ${agreeTerms && selectedPayment && !isProcessing
                 ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-2xl'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
             >
-              Checkout
+              {isProcessing ? 'Memproses...' : 'Checkout'}
             </button>
           </div>
 
@@ -516,20 +564,22 @@ const Payment = () => {
             </div>
 
             {/* Add-ons */}
-            <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl p-4 lg:p-6 border border-gray-100">
-              <h3 className="font-semibold text-sm lg:text-base text-gray-800 mb-4 flex items-center gap-2">
-                <Plus className="w-5 h-5 text-purple-600" />
-                List Add-ons
-              </h3>
-              <div className="space-y-3">
-                {addOns.map((addon: any) => (
-                  <div key={addon.id} className="flex justify-between items-center text-xs lg:text-sm p-3 rounded-lg bg-gray-50 border border-gray-100">
-                    <span className="text-gray-700">{addon.name}</span>
-                    <span className="font-semibold text-gray-800">{formatRupiah(addon.price)}</span>
-                  </div>
-                ))}
+            {addOns.length > 0 && (
+              <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl p-4 lg:p-6 border border-gray-100">
+                <h3 className="font-semibold text-sm lg:text-base text-gray-800 mb-4 flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-purple-600" />
+                  List Add-ons
+                </h3>
+                <div className="space-y-3">
+                  {addOns.map((addon: any) => (
+                    <div key={addon.id} className="flex justify-between items-center text-xs lg:text-sm p-3 rounded-lg bg-gray-50 border border-gray-100">
+                      <span className="text-gray-700">{addon.name}</span>
+                      <span className="font-semibold text-gray-800">{formatRupiah(addon.price)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Price Summary - Desktop Only */}
             <div className="hidden lg:block bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl p-6 border border-gray-100">
@@ -538,14 +588,18 @@ const Payment = () => {
                   <span>Subtotal:</span>
                   <span className="font-semibold">{formatRupiah(calculateSubtotal())}</span>
                 </div>
-                <div className="flex justify-between text-gray-700">
-                  <span>Add-Ons:</span>
-                  <span className="font-semibold">{formatRupiah(calculateAddOns())}</span>
-                </div>
-                <div className="flex justify-between text-green-600">
-                  <span>Discount:</span>
-                  <span className="font-semibold">-{formatRupiah(discount)}</span>
-                </div>
+                {addOns.length > 0 && (
+                  <div className="flex justify-between text-gray-700">
+                    <span>Add-Ons:</span>
+                    <span className="font-semibold">{formatRupiah(calculateAddOns())}</span>
+                  </div>
+                )}
+                {discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount:</span>
+                    <span className="font-semibold">-{formatRupiah(discount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-700">
                   <span>Convenience fee:</span>
                   <span className="font-semibold">{formatRupiah(convenienceFee)}</span>
@@ -564,7 +618,7 @@ const Payment = () => {
         </div>
       </div>
 
-      {/* POPUP PAYMENT - Menggunakan component yang benar */}
+      {/* POPUP PAYMENT */}
       <PopupPayment
         open={openPopup}
         onClose={() => setOpenPopup(false)}

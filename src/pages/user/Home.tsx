@@ -14,31 +14,58 @@ const Home = () => {
 
       <Navbar />
 
-<section
-  className="
-    flex flex-col md:flex-row items-center
-    justify-center md:justify-between
-    px-4 md:px-16 py-8 md:py-16
-    relative z-10 max-w-7xl mx-auto gap-8 md:gap-16
-    h-screen md:h-auto
-  "
->
-  {/* LEFT CONTENT */}
-  <div className="max-w-xl text-center md:text-left">
-    <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-gray-900 leading-tight mb-4 md:mb-6">
-      Selamat Datang
-    </h1>
+      <section
+        className="
+          flex flex-col items-center
+          justify-center md:justify-between
+          px-4 md:px-16 py-8 md:py-16
+          relative z-10 max-w-7xl mx-auto gap-10 md:gap-16
+          md:h-auto
+        "
+      >
+        {/* IMAGE - Shows on mobile (top), hidden on desktop */}
+        <div className="block md:hidden relative mt-2">            
+          {/* Phone mockup container */}
+          <div className="relative w-64 h-[480px]">
+            <div className="relative h-full transform hover:scale-105 transition-all duration-700 ease-out animate-float">
+              <img 
+                src={icon} 
+                alt="SmartAcademy App"
+                className="w-full h-full object-contain drop-shadow-2xl"
+                style={{
+                  filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.3))'
+                }}
+              />
+            </div>
+          </div>
+          
+          {/* Floating decorative elements */}
+          <div className="absolute -top-6 -left-6 w-24 h-24 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full blur-2xl opacity-50 animate-pulse"></div>
+          <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full blur-2xl opacity-50 animate-bounce"></div>
+        </div>
 
-    <p className="text-base sm:text-lg md:text-lg font-medium text-gray-800 mb-2 md:mb-4">
-      Temukan Yang kamu cari disini
-    </p>
+        {/* CONTENT WRAPPER - Now flex-row on desktop */}
+        <div className="flex flex-col md:flex-row items-center justify-center md:justify-between w-full gap-8 md:gap-16">
+          {/* LEFT CONTENT */}
+          <div className="max-w-xl text-center md:text-left flex flex-col items-center md:items-start gap-4 sm:gap-5 md:gap-6">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-gray-900 leading-tight">
+              Selamat Datang
+            </h1>
 
-    <a href="#produk" className="px-6 sm:px-8 md:px-12 py-2 sm:py-3 md:py-4 bg-black text-white rounded-xl font-semibold hover:bg-gray-800 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105">
-      Cari Produk!
-    </a>
-  </div>
-        {/* RIGHT IMAGE - Only for desktop */}
-        <div className="hidden md:block relative">            
+            <p className="text-base sm:text-lg font-medium text-gray-800">
+              Temukan Yang kamu cari disini
+            </p>
+
+            <a
+              href="#produk"
+              className="inline-block px-6 sm:px-8 md:px-12 py-2 sm:py-3 md:py-4 bg-black text-white rounded-xl font-semibold hover:bg-gray-800 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105"
+            >
+              Cari Produk!
+            </a>
+          </div>
+
+          {/* RIGHT IMAGE - Only for desktop */}
+          <div className="hidden md:block relative">            
             {/* Phone mockup container */}
             <div className="relative w-80 h-[600px]">
               <div className="relative h-full transform hover:scale-105 transition-all duration-700 ease-out animate-float">
@@ -52,16 +79,17 @@ const Home = () => {
                 />
               </div>
             </div>
-          
-          {/* Floating decorative elements */}
-          <div className="absolute -top-6 -left-6 w-24 h-24 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full blur-2xl opacity-50 animate-pulse"></div>
-          <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full blur-2xl opacity-50 animate-bounce"></div>
+            
+            {/* Floating decorative elements */}
+            <div className="absolute -top-6 -left-6 w-24 h-24 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full blur-2xl opacity-50 animate-pulse"></div>
+            <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full blur-2xl opacity-50 animate-bounce"></div>
+          </div>
         </div>
       </section>
 
       <Menu_produk />
-      <Footer />
 
+      <Footer />
 
       <style>{`
         @keyframes float {

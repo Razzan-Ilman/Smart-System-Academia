@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
     PlusOutlined,
     DeleteOutlined,
@@ -8,7 +8,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import RichTextEditor from "../../components/RichTextEditor";
-import { productService } from "../../services/adminService";
+import { productService } from "../../services/productService";
+import categoryService from "../../services/categoryService";
 import '../../styles/rich-text-editor.css';
 
 // TypeScript Interface - Sesuai Kontrak API
@@ -18,6 +19,12 @@ interface AddOn {
     link_add_ons: string;
 }
 
+interface Category {
+    id: number;
+    name: string;
+    date: string;
+}
+
 interface ProductPayload {
     name: string;
     description: string;
@@ -25,29 +32,27 @@ interface ProductPayload {
     link_product: string;
     images: string[];
     category_id: number;
-    stock: number;
-    add_ons: AddOn[];
+    stock?: number;
+    add_ons?: AddOn[];
 }
-
-// Category mapping
-const CATEGORIES = [
-    { id: 1, name: "Course", platform: "Google Drive" },
-    { id: 2, name: "Kelas", platform: "WhatsApp" }
-];
 
 export default function AdminTambahProduk() {
     const navigate = useNavigate();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Form State - Sesuai Kontrak API
+    // Form State
     const [name, setName] = useState("");
     const [price, setPrice] = useState<number>(0);
     const [description, setDescription] = useState("");
     const [linkProduct, setLinkProduct] = useState("");
-    const [categoryId, setCategoryId] = useState<number>(0);
+    const [categoryId, setCategoryId] = useState<number | null>(null);
     const [images, setImages] = useState<string[]>([]);
     const [stock, setStock] = useState<number>(0);
     const [addOns, setAddOns] = useState<AddOn[]>([]);
+
+    // Categories State - FROM API
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [loadingCategories, setLoadingCategories] = useState(true);
 
     // UI State
     const [platformError, setPlatformError] = useState("");
@@ -56,6 +61,41 @@ export default function AdminTambahProduk() {
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [tempAddOn, setTempAddOn] = useState<AddOn>({ name: "", price: 0, link_add_ons: "" });
 
+    // Load categories from API on component mount
+    useEffect(() => {
+        loadCategories();
+    }, []);
+
+    const loadCategories = async () => {
+        try {
+            setLoadingCategories(true);
+            const data = await categoryService.getAll();
+            console.log('Categories loaded from API:', data);
+            setCategories(data);
+        } catch (error) {
+            console.error('Failed to load categories:', error);
+            toast.error('Gagal memuat kategori. Silakan refresh halaman.');
+        } finally {
+            setLoadingCategories(false);
+        }
+    };
+
+    // Platform detection based on category name
+    const getPlatformForCategory = (catId: number): string => {
+        const category = categories.find(c => c.id === catId);
+        if (!category) return "";
+        
+        const catName = category.name.toLowerCase();
+        
+        if (catName.includes("course") || catName.includes("kursus")) {
+            return "Google Drive";
+        } else if (catName.includes("kelas") || catName.includes("class")) {
+            return "WhatsApp";
+        }
+        
+        return "";
+    };
+
     // Handle image upload
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
@@ -63,12 +103,12 @@ export default function AdminTambahProduk() {
 
         Array.from(files).forEach((file) => {
             if (!file.type.startsWith('image/')) {
-                alert('Hanya file gambar yang diperbolehkan');
+                toast.error('Hanya file gambar yang diperbolehkan');
                 return;
             }
 
             if (file.size > 5 * 1024 * 1024) {
-                alert('Ukuran file maksimal 5MB');
+                toast.error('Ukuran file maksimal 5MB');
                 return;
             }
 
@@ -97,10 +137,10 @@ export default function AdminTambahProduk() {
     const validatePlatformLink = (link: string, catId: number): boolean => {
         if (!link) return true;
 
-        const category = CATEGORIES.find(c => c.id === catId);
-        if (!category) return true;
+        const platform = getPlatformForCategory(catId);
+        if (!platform) return true;
 
-        if (category.name === "Course") {
+        if (platform === "Google Drive") {
             const isValidGdrive = link.includes("drive.google.com") ||
                 link.includes("docs.google.com") ||
                 link.toLowerCase().includes("gdrive");
@@ -108,7 +148,7 @@ export default function AdminTambahProduk() {
                 setPlatformError("Link harus berupa Google Drive untuk kategori Course");
                 return false;
             }
-        } else if (category.name === "Kelas") {
+        } else if (platform === "WhatsApp") {
             const isValidWA = link.includes("wa.me") ||
                 link.includes("whatsapp.com") ||
                 link.includes("chat.whatsapp");
@@ -129,6 +169,16 @@ export default function AdminTambahProduk() {
         }
     };
 
+    const handleCategoryChange = (value: string) => {
+        const numValue = parseInt(value);
+        setCategoryId(numValue > 0 ? numValue : null);
+        setPlatformError("");
+        
+        if (linkProduct && numValue > 0) {
+            validatePlatformLink(linkProduct, numValue);
+        }
+    };
+
     // Add-on Modal Handlers
     const openAddOnModal = () => {
         setTempAddOn({ name: "", price: 0, link_add_ons: "" });
@@ -143,18 +193,21 @@ export default function AdminTambahProduk() {
     };
 
     const handleSaveAddOn = () => {
-        if (!tempAddOn.name || tempAddOn.price <= 0) {
-            alert("Nama dan harga add-on wajib diisi");
+        if (!tempAddOn.name.trim()) {
+            toast.error("Nama add-on wajib diisi");
+            return;
+        }
+
+        if (tempAddOn.price <= 0) {
+            toast.error("Harga add-on harus lebih dari 0");
             return;
         }
 
         if (editingIndex !== null) {
-            // Update existing
             const updated = [...addOns];
             updated[editingIndex] = tempAddOn;
             setAddOns(updated);
         } else {
-            // Add new
             setAddOns([...addOns, tempAddOn]);
         }
 
@@ -173,16 +226,26 @@ export default function AdminTambahProduk() {
         setEditingIndex(null);
     };
 
-    // Submit Handler - Generate Payload Sesuai Kontrak API
+    // Save handler with API integration
     const handleSave = async () => {
-        // Validation
-        if (!name || price <= 0 || !categoryId) {
-            alert("Nama, harga, dan kategori wajib diisi");
+        // Validasi
+        if (!name.trim()) {
+            toast.error("Nama produk wajib diisi");
             return;
         }
 
-        if (!linkProduct) {
-            alert("Link produk wajib diisi");
+        if (!price || price <= 0 || isNaN(price)) {
+            toast.error("Harga harus lebih dari 0");
+            return;
+        }
+
+        if (!categoryId || categoryId <= 0) {
+            toast.error("Kategori wajib dipilih");
+            return;
+        }
+
+        if (!linkProduct.trim()) {
+            toast.error("Link produk wajib diisi");
             return;
         }
 
@@ -190,55 +253,61 @@ export default function AdminTambahProduk() {
             return;
         }
 
-        // Construct payload IDENTIK dengan kontrak API
+        // Construct payload
         const payload: ProductPayload = {
-            name,
-            description,
-            price,
-            link_product: linkProduct,
-            images,
-            category_id: categoryId,
-            stock,
-            add_ons: addOns
+            name: name.trim(),
+            description: description.trim() || "",
+            price: Number(price),
+            link_product: linkProduct.trim(),
+            images: images.length > 0 ? images : [],
+            category_id: Number(categoryId),
         };
 
-        // Debug logging
-        console.log('=== FORM DATA DEBUG ===');
-        console.log('name:', name);
-        console.log('price:', price, 'type:', typeof price);
-        console.log('categoryId:', categoryId, 'type:', typeof categoryId);
-        console.log('linkProduct:', linkProduct);
-        console.log('stock:', stock);
-        console.log('images:', images);
-        console.log('addOns:', addOns);
-        console.log('=== PAYLOAD ===');
+        // Add optional fields
+        if (stock && !isNaN(stock) && stock > 0) {
+            payload.stock = Number(stock);
+        }
+
+        if (addOns.length > 0) {
+            payload.add_ons = addOns.map(addon => ({
+                name: addon.name.trim(),
+                price: Number(addon.price),
+                link_add_ons: addon.link_add_ons.trim() || ""
+            }));
+        }
+
+        console.log('=== FINAL PAYLOAD ===');
         console.log(JSON.stringify(payload, null, 2));
-        console.log('=== PAYLOAD KEYS ===');
-        console.log('payload.category_id:', payload.category_id);
-        console.log('payload.link_product:', payload.link_product);
-        console.log('payload.price:', payload.price);
 
         try {
             setSaving(true);
-            console.log('Creating product with payload:', payload);
             const response = await productService.create(payload);
             console.log('Product created successfully:', response);
             toast.success('Produk berhasil ditambahkan');
-            navigate("/admin/produk");
+            
+            setTimeout(() => {
+                navigate("/admin/produk");
+            }, 1000);
         } catch (error: any) {
             console.error('Failed to create product:', error);
-            console.error('Error response:', error.response);
-            console.error('Error message:', error.message);
+            
+            let errorMessage = 'Gagal menambahkan produk';
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.response?.data?.error) {
+                errorMessage = error.response.data.error;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
 
-            // Show specific error message if available
-            const errorMessage = error.response?.data?.message || error.message || 'Gagal menambahkan produk';
             toast.error(errorMessage);
         } finally {
             setSaving(false);
         }
     };
 
-    const selectedCategory = CATEGORIES.find(c => c.id === categoryId);
+    const selectedCategory = categories.find(c => c.id === categoryId);
+    const selectedPlatform = categoryId ? getPlatformForCategory(categoryId) : "";
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto pb-10">
@@ -252,7 +321,6 @@ export default function AdminTambahProduk() {
             <div className="bg-white rounded-2xl shadow-sm border-2 border-blue-400 p-8">
                 <h2 className="text-xl font-bold text-gray-500 mb-6">Detail Produk</h2>
 
-                {/* Hidden file input */}
                 <input
                     ref={fileInputRef}
                     type="file"
@@ -295,12 +363,14 @@ export default function AdminTambahProduk() {
                 <div className="space-y-6">
                     {/* Name */}
                     <div>
-                        <label className="block text-gray-500 font-bold mb-2">Nama Produk *</label>
+                        <label className="block text-gray-500 font-bold mb-2">
+                            Nama Produk <span className="text-red-500">*</span>
+                        </label>
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="Nama Produk"
+                            placeholder="Contoh: Kursus Belajar React JS"
                             className="w-full px-4 py-3 bg-[#f3f4f9] rounded-xl border-none focus:ring-2 focus:ring-blue-400 outline-none"
                         />
                     </div>
@@ -315,24 +385,43 @@ export default function AdminTambahProduk() {
                         />
                     </div>
 
-                    {/* Category ID */}
+                    {/* Category - DYNAMIC FROM API */}
                     <div>
-                        <label className="block text-gray-500 font-bold mb-2">Kategori *</label>
-                        <select
-                            value={categoryId}
-                            onChange={(e) => setCategoryId(parseInt(e.target.value))}
-                            className="w-full px-4 py-4 bg-white border-2 border-blue-400 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
-                        >
-                            <option value={0}>Pilih Kategori</option>
-                            {CATEGORIES.map(cat => (
-                                <option key={cat.id} value={cat.id}>{cat.name}</option>
-                            ))}
-                        </select>
+                        <label className="block text-gray-500 font-bold mb-2">
+                            Kategori <span className="text-red-500">*</span>
+                        </label>
+                        {loadingCategories ? (
+                            <div className="w-full px-4 py-4 bg-white border-2 border-blue-400 rounded-xl shadow-sm text-gray-500 text-center">
+                                Memuat kategori...
+                            </div>
+                        ) : categories.length === 0 ? (
+                            <div className="w-full px-4 py-4 bg-red-50 border-2 border-red-300 rounded-xl text-red-600 text-center">
+                                Tidak ada kategori tersedia. Silakan tambah kategori terlebih dahulu.
+                            </div>
+                        ) : (
+                            <select
+                                value={categoryId || ""}
+                                onChange={(e) => handleCategoryChange(e.target.value)}
+                                className="w-full px-4 py-4 bg-white border-2 border-blue-400 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
+                            >
+                                <option value="">-- Pilih Kategori --</option>
+                                {categories.map(cat => {
+                                    const platform = getPlatformForCategory(cat.id);
+                                    return (
+                                        <option key={cat.id} value={cat.id}>
+                                            {cat.name}{platform ? ` (${platform})` : ''}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        )}
                     </div>
 
                     {/* Link Product */}
                     <div>
-                        <label className="block text-gray-500 font-bold mb-2">Link Produk *</label>
+                        <label className="block text-gray-500 font-bold mb-2">
+                            Link Produk <span className="text-red-500">*</span>
+                        </label>
                         <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 flex flex-col gap-2">
                             <input
                                 type="text"
@@ -340,8 +429,8 @@ export default function AdminTambahProduk() {
                                 onChange={(e) => handlePlatformLinkChange(e.target.value)}
                                 disabled={!categoryId}
                                 placeholder={
-                                    selectedCategory
-                                        ? `Link ${selectedCategory.platform}`
+                                    selectedPlatform
+                                        ? `Contoh: https://${selectedPlatform === "Google Drive" ? "drive.google.com/..." : "wa.me/..."}`
                                         : "Pilih kategori terlebih dahulu"
                                 }
                                 className={`flex-1 px-4 py-3 bg-white rounded-full border shadow-sm outline-none focus:ring-2 ${!categoryId
@@ -356,29 +445,35 @@ export default function AdminTambahProduk() {
                                     ⚠️ {platformError}
                                 </p>
                             )}
+                            {!platformError && selectedPlatform && (
+                                <p className="text-xs text-blue-500 px-2">
+                                    💡 Platform: <strong>{selectedPlatform}</strong>
+                                </p>
+                            )}
                         </div>
                     </div>
 
                     {/* Price & Stock Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Price */}
                         <div>
-                            <label className="block text-gray-500 font-bold mb-2">Harga *</label>
+                            <label className="block text-gray-500 font-bold mb-2">
+                                Harga <span className="text-red-500">*</span>
+                            </label>
                             <div className="flex gap-2">
                                 <div className="px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm font-bold text-gray-500">IDR</div>
                                 <input
                                     type="number"
                                     value={price || ""}
                                     onChange={(e) => setPrice(parseInt(e.target.value) || 0)}
-                                    placeholder="0"
+                                    placeholder="50000"
+                                    min="0"
                                     className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-blue-400"
                                 />
                             </div>
                         </div>
 
-                        {/* Stock */}
                         <div>
-                            <label className="block text-gray-500 font-bold mb-2">Stok *</label>
+                            <label className="block text-gray-500 font-bold mb-2">Stok</label>
                             <input
                                 type="number"
                                 value={stock || ""}
@@ -443,7 +538,8 @@ export default function AdminTambahProduk() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex justify-between items-center">
                 <button
                     onClick={() => navigate("/admin/produk")}
-                    className="px-10 py-3 bg-white border border-red-500 text-red-500 rounded-xl font-bold hover:bg-red-50 transition shadow-sm active:scale-95"
+                    disabled={saving}
+                    className="px-10 py-3 bg-white border border-red-500 text-red-500 rounded-xl font-bold hover:bg-red-50 transition shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     Cancel
                 </button>
