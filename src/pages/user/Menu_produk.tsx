@@ -2,27 +2,41 @@ import { useEffect, useState } from 'react';
 import SearchBar from '../../components/user/SearchBar';
 import ProductGrid from '../../components/user/ProductGrid';
 import { productService } from '../../services/productService';
-import type { Product } from '../../services/productService';
+import { categoryService } from '../../services/categoryService';
 
 type GridProduct = {
-  id: string; // ✅ FIX
+  id: string;
   title: string;
   category: string;
   price: string;
   image?: string;
 };
 
-const API_LIMIT = 10; // ✅ samakan dengan API
+const API_LIMIT = 10;
 
 const Menu_produk = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState<GridProduct[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [categoryMap, setCategoryMap] = useState<Record<number, string>>({});
 
-  /* ================= FETCH PAGINATED ================= */
+  useEffect(() => {
+    // Ambil kategori satu kali
+    const fetchCategories = async () => {
+      try {
+        const categories = await categoryService.getAll();
+        const map: Record<number, string> = {};
+        categories.forEach((cat) => (map[cat.id] = cat.name));
+        setCategoryMap(map);
+      } catch (error) {
+        console.error('Fetch categories error:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -30,15 +44,15 @@ const Menu_produk = () => {
 
         const res = await productService.getPaginated(page, API_LIMIT);
 
-        const mapped: GridProduct[] = res.data.map((p: Product) => ({
+        const mapped: GridProduct[] = res.data.map((p) => ({
           id: p.id!,
           title: p.name,
-          category: `Kategori ${p.category_id}`,
+          category: categoryMap[p.category_id] ?? `Kategori ${p.category_id}`,
           price: `IDR ${p.price.toLocaleString('id-ID')}`,
           image: p.images?.[0],
         }));
 
-        setProducts(mapped); // ✅ JANGAN slice
+        setProducts(mapped);
         setTotal(res.total);
       } catch (error) {
         console.error('Fetch products error:', error);
@@ -49,38 +63,31 @@ const Menu_produk = () => {
     };
 
     fetchProducts();
-  }, [page]);
+  }, [page, categoryMap]);
 
-  /* ================= SEARCH ================= */
   const filteredProducts = products.filter((product) =>
     product.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const totalPages = Math.ceil(total / API_LIMIT);
 
-  /* ================= RENDER ================= */
   return (
     <section className="relative z-10 px-6 sm:px-8 py-20 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-10">
-        <h2 className="text-4xl font-bold text-gray-900">
+        <h2 className="text-4xl font-bold text-gray-900" id="products">
           Produk Kami
         </h2>
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
       </div>
 
-      {loading && (
-        <p className="text-center text-gray-500">Memuat produk...</p>
-      )}
-
+      {loading && <p className="text-center text-gray-500">Memuat produk...</p>}
       {!loading && filteredProducts.length === 0 && (
         <p className="text-center text-gray-500">Produk tidak ditemukan</p>
       )}
-
       {!loading && filteredProducts.length > 0 && (
         <ProductGrid products={filteredProducts} />
       )}
 
-      {/* ================= PAGINATION ================= */}
       {!loading && totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-10 flex-wrap">
           <button
@@ -90,21 +97,17 @@ const Menu_produk = () => {
           >
             Prev
           </button>
-
           {[...Array(totalPages)].map((_, i) => (
             <button
               key={i + 1}
               onClick={() => setPage(i + 1)}
               className={`px-4 py-2 rounded-lg ${
-                page === i + 1
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-200'
+                page === i + 1 ? 'bg-purple-600 text-white' : 'bg-gray-200'
               }`}
             >
               {i + 1}
             </button>
           ))}
-
           <button
             disabled={page === totalPages}
             onClick={() => setPage((p) => p + 1)}

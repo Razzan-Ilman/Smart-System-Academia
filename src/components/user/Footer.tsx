@@ -15,7 +15,7 @@ const Footer = () => {
         </div>
 
         {/* Contact Info */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4" id="contact">
           <h3 className="font-semibold text-gray-900 mb-2">Contact</h3>
           <div className="flex items-center gap-3">
             <WhatsAppOutlined className="text-green-500 text-xl" />

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import RichTextEditor from "../../components/RichTextEditor";
 import { productService } from "../../services/productService";
 import categoryService from "../../services/categoryService";
+import { imageProductService } from "../../services/imageProductService";
 import '../../styles/rich-text-editor.css';
 
 // TypeScript Interface - Sesuai Kontrak API
@@ -26,15 +27,16 @@ interface Category {
 }
 
 interface ProductPayload {
-    name: string;
-    description: string;
-    price: number;
-    link_product: string;
-    images: string[];
-    category_id: number;
-    stock?: number;
-    add_ons?: AddOn[];
+  name: string;
+  description: string;
+  price: number;
+  link_product: string;
+  category_id: number;
+  stock?: number;
+  add_ons?: AddOn[];
 }
+
+
 
 export default function AdminTambahProduk() {
     const navigate = useNavigate();
@@ -254,14 +256,14 @@ export default function AdminTambahProduk() {
         }
 
         // Construct payload
-        const payload: ProductPayload = {
-            name: name.trim(),
-            description: description.trim() || "",
-            price: Number(price),
-            link_product: linkProduct.trim(),
-            images: images.length > 0 ? images : [],
-            category_id: Number(categoryId),
-        };
+const payload: ProductPayload = {
+  name: name.trim(),
+  description: description.trim() || "",
+  price: Number(price),
+  link_product: linkProduct.trim(),
+  category_id: Number(categoryId),
+};
+
 
         // Add optional fields
         if (stock && !isNaN(stock) && stock > 0) {
@@ -279,31 +281,35 @@ export default function AdminTambahProduk() {
         console.log('=== FINAL PAYLOAD ===');
         console.log(JSON.stringify(payload, null, 2));
 
-        try {
-            setSaving(true);
-            const response = await productService.create(payload);
-            console.log('Product created successfully:', response);
-            toast.success('Produk berhasil ditambahkan');
-            
-            setTimeout(() => {
-                navigate("/admin/produk");
-            }, 1000);
-        } catch (error: any) {
-            console.error('Failed to create product:', error);
-            
-            let errorMessage = 'Gagal menambahkan produk';
-            if (error.response?.data?.message) {
-                errorMessage = error.response.data.message;
-            } else if (error.response?.data?.error) {
-                errorMessage = error.response.data.error;
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
+try {
+  setSaving(true);
 
-            toast.error(errorMessage);
-        } finally {
-            setSaving(false);
-        }
+  // 1️⃣ CREATE PRODUCT
+  const res = await productService.create(payload);
+
+  const productId =
+    res.data?.data?.id ||
+    res.data?.id;
+
+  if (!productId) {
+    throw new Error("Product ID tidak ditemukan");
+  }
+
+  // 2️⃣ UPLOAD IMAGES (JIKA ADA)
+  if (images.length > 0) {
+    await imageProductService.upload(productId, images);
+  }
+
+  toast.success("Produk berhasil ditambahkan");
+  navigate("/admin/produk");
+
+} catch (error: any) {
+  console.error(error);
+  toast.error("Gagal menambahkan produk");
+} finally {
+  setSaving(false);
+}
+
     };
 
     const selectedCategory = categories.find(c => c.id === categoryId);

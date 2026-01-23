@@ -1,113 +1,46 @@
-import axiosInstance from './axiosInstance';
+import axiosInstance from "./axiosInstance";
 
+// ✅ Export interface Category agar bisa di-import
 export interface Category {
-    id: number;
-    name: string;
-    date: string;
+  id: number;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 class CategoryService {
-    private endpoint = '/category';
+  private endpoint = "/category";
 
-    // Get all categories
-    async getAll(): Promise<Category[]> {
-        try {
-            const response = await axiosInstance.get<Category[]>(this.endpoint);
-            const list = response.data || [];
-            // @ts-ignore
-            const rawList = list.data || list;
-            return rawList.map((item: any) => ({
-                id: item.Id || item.id,
-                name: item.Name || item.name,
-                date: item.Date || item.date
-            }));
-        } catch (error) {
-            // Fallback to localStorage
-            const saved = localStorage.getItem('admin_categories');
-            return saved ? JSON.parse(saved) : [];
-        }
+  /**
+   * Ambil semua kategori
+   */
+  async getAll(): Promise<Category[]> {
+    try {
+      const response = await axiosInstance.get(this.endpoint);
+      const rawData = response.data?.data ?? response.data ?? [];
+      // Pastikan semua id number
+      return rawData.map((c: any) => ({
+        id: Number(c.id),
+        name: c.name,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+      }));
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      return [];
     }
+  }
 
-    // Get category by ID
-    async getById(id: number): Promise<Category | null> {
-        try {
-            const response = await axiosInstance.get<Category>(`${this.endpoint}/${id}`);
-            const data: any = response.data;
-            // @ts-ignore
-            const item = data.data || data;
-            return {
-                id: item.Id || item.id,
-                name: item.Name || item.name,
-                date: item.Date || item.date
-            };
-        } catch (error) {
-            // Fallback to localStorage
-            const saved = localStorage.getItem('admin_categories');
-            if (saved) {
-                const categories: Category[] = JSON.parse(saved);
-                return categories.find(c => c.id === id) || null;
-            }
-            return null;
-        }
-    }
-
-    // Create new category
-    async create(category: Omit<Category, 'id'>): Promise<Category> {
-        try {
-            const payload = {
-                name: category.name
-            };
-            const response = await axiosInstance.post<Category>(this.endpoint, payload);
-            return response.data;
-        } catch (error) {
-            // Fallback to localStorage
-            const newCategory = { ...category, id: Date.now() };
-            const saved = localStorage.getItem('admin_categories');
-            const categories = saved ? JSON.parse(saved) : [];
-            categories.push(newCategory);
-            localStorage.setItem('admin_categories', JSON.stringify(categories));
-            return newCategory as Category;
-        }
-    }
-
-    // Update category
-    async update(id: number, category: Partial<Category>): Promise<Category> {
-        try {
-            const payload: any = {};
-            if (category.name) payload.name = category.name;
-
-            const response = await axiosInstance.put<Category>(`${this.endpoint}/${id}`, payload);
-            return response.data;
-        } catch (error) {
-            // Fallback to localStorage
-            const saved = localStorage.getItem('admin_categories');
-            if (saved) {
-                const categories: Category[] = JSON.parse(saved);
-                const index = categories.findIndex(c => c.id === id);
-                if (index !== -1) {
-                    categories[index] = { ...categories[index], ...category };
-                    localStorage.setItem('admin_categories', JSON.stringify(categories));
-                    return categories[index];
-                }
-            }
-            throw new Error('Category not found');
-        }
-    }
-
-    // Delete category
-    async delete(id: number): Promise<void> {
-        try {
-            await axiosInstance.delete(`${this.endpoint}/${id}`);
-        } catch (error) {
-            // Fallback to localStorage
-            const saved = localStorage.getItem('admin_categories');
-            if (saved) {
-                const categories: Category[] = JSON.parse(saved);
-                const filtered = categories.filter(c => c.id !== id);
-                localStorage.setItem('admin_categories', JSON.stringify(filtered));
-            }
-        }
-    }
+  /**
+   * Ambil kategori berdasarkan ID
+   */
+  async getById(id: number | string): Promise<Category | null> {
+    const categories = await this.getAll();
+    // Pastikan perbandingan id number
+    const targetId = Number(id);
+    return categories.find(cat => cat.id === targetId) ?? null;
+  }
 }
 
-export default new CategoryService();
+export const categoryService = new CategoryService();
+export default categoryService;
