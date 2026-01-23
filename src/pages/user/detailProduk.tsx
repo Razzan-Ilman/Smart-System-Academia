@@ -2,47 +2,44 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "../../components/user/Navbar";
 import { X, Plus, CheckCircle2 } from "lucide-react";
+import { productService } from "../../services/productService";
+import type { Product, AddOn } from "../../services/productService";
 
-/* ================= TYPES ================= */
-type ApiAddOn = {
-  id: string;
-  name: string;
-  price: number;
-  link_add_ons?: string;
-};
-
-type ApiProductDetail = {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  link_product?: string;
-  images: string[];
-  category_id: number;
-  add_ons?: ApiAddOn[];
-};
-
-/* ================= COMPONENT ================= */
 const DetailProduk = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
 
-  const [product, setProduct] = useState<ApiProductDetail | null>(null);
+  const [product, setProduct] = useState<Product | null>(null);
   const [mainImage, setMainImage] = useState<string | null>(null);
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const [showAddOnsPopup, setShowAddOnsPopup] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   /* ================= FETCH API ================= */
   useEffect(() => {
-    fetch(`https://ssa-payment.lskk.co.id/api/v1/product/${id}`)
-      .then((res) => res.json())
-      .then((res) => {
-        setProduct(res.data);
-        setMainImage(res.data?.images?.[0] ?? null);
-      })
-      .catch((err) => console.error("Fetch detail error:", err))
-      .finally(() => setLoading(false));
+    if (!id) {
+      setError("ID produk tidak valid");
+      setLoading(false);
+      return;
+    }
+
+    const fetchProduct = async () => {
+      try {
+        setLoading(true);
+        const data = await productService.getById(id);
+        setProduct(data);
+        setMainImage(data.images?.[0] ?? null);
+        setError(null);
+      } catch (err) {
+        console.error("Fetch detail error:", err);
+        setError("Gagal memuat detail produk");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
   }, [id]);
 
   /* ================= HELPERS ================= */
@@ -58,8 +55,8 @@ const DetailProduk = () => {
     );
   };
 
-  const getSelectedAddOnsData = () => {
-    return addOns.filter((addon) => selectedAddOns.includes(addon.id));
+  const getSelectedAddOnsData = (): AddOn[] => {
+    return addOns.filter((addon) => addon.id && selectedAddOns.includes(addon.id));
   };
 
   const totalAddOnPrice = getSelectedAddOnsData().reduce(
@@ -75,16 +72,27 @@ const DetailProduk = () => {
   /* ================= LOADING ================= */
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        Memuat detail produk...
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Memuat detail produk...</p>
+        </div>
       </div>
     );
   }
 
-  if (!product) {
+  if (error || !product) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        Produk tidak ditemukan
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error || "Produk tidak ditemukan"}</p>
+          <button
+            onClick={() => navigate("/")}
+            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            Kembali ke Beranda
+          </button>
+        </div>
       </div>
     );
   }
@@ -118,17 +126,16 @@ const DetailProduk = () => {
             <div className="md:hidden bg-white rounded-2xl shadow-lg p-4">
               <h2 className="text-lg font-semibold mb-3">{product.name}</h2>
 
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2 mb-4 overflow-x-auto">
                 {images.map((img, i) => (
                   <img
                     key={i}
                     src={img}
                     onClick={() => setMainImage(img)}
-                    className={`w-12 h-12 rounded-lg object-cover cursor-pointer
-                      ${
-                        mainImage === img
-                          ? "ring-2 ring-purple-500"
-                          : "hover:ring-2 hover:ring-purple-300"
+                    className={`w-12 h-12 flex-shrink-0 rounded-lg object-cover cursor-pointer transition
+                      ${mainImage === img
+                        ? "ring-2 ring-purple-500"
+                        : "hover:ring-2 hover:ring-purple-300"
                       }`}
                     onError={(e) => {
                       e.currentTarget.src = "/no-image.png";
@@ -141,9 +148,10 @@ const DetailProduk = () => {
             {/* DESCRIPTION */}
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
               <p className="font-semibold mb-2">Deskripsi</p>
-              <p className="text-sm md:text-base text-gray-600">
-                {product.description}
-              </p>
+              <div 
+                className="text-sm md:text-base text-gray-600"
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
             </div>
 
             {/* MOBILE ADD-ONS BUTTON */}
@@ -151,12 +159,12 @@ const DetailProduk = () => {
               <div className="md:hidden">
                 <button
                   onClick={() => setShowAddOnsPopup(true)}
-                  className="w-full bg-white rounded-xl shadow-lg p-4 flex justify-between"
+                  className="w-full bg-white rounded-xl shadow-lg p-4 flex justify-between items-center hover:bg-gray-50 transition"
                 >
                   <span className="font-medium">
                     Add-On (Optional) {selectedAddOns.length > 0 && `(${selectedAddOns.length})`}
                   </span>
-                  <Plus />
+                  <Plus className="w-5 h-5" />
                 </button>
               </div>
             )}
@@ -171,7 +179,7 @@ const DetailProduk = () => {
               </div>
 
               <button
-                className="w-full bg-purple-600 text-white py-4 rounded-xl font-semibold"
+                className="w-full bg-purple-600 text-white py-4 rounded-xl font-semibold hover:bg-purple-700 transition active:scale-95"
                 onClick={() =>
                   navigate("/payment", {
                     state: {
@@ -195,16 +203,22 @@ const DetailProduk = () => {
           {/* RIGHT DESKTOP */}
           <div className="hidden md:block space-y-6">
             <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h2 className="text-xl font-semibold">{product.name}</h2>
-              <p className="text-lg font-bold mb-4">{formatRupiah(basePrice)}</p>
+              <h2 className="text-xl font-semibold mb-2">{product.name}</h2>
+              <p className="text-2xl font-bold text-purple-600 mb-4">
+                {formatRupiah(basePrice)}
+              </p>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {images.map((img, i) => (
                   <img
                     key={i}
                     src={img}
                     onClick={() => setMainImage(img)}
-                    className="w-16 h-16 rounded-lg object-cover cursor-pointer hover:ring-2 hover:ring-purple-400"
+                    className={`w-16 h-16 rounded-lg object-cover cursor-pointer transition
+                      ${mainImage === img
+                        ? "ring-2 ring-purple-500"
+                        : "hover:ring-2 hover:ring-purple-400"
+                      }`}
                     onError={(e) => {
                       e.currentTarget.src = "/no-image.png";
                     }}
@@ -217,35 +231,37 @@ const DetailProduk = () => {
               <div className="bg-white rounded-2xl shadow-lg p-6">
                 <h3 className="font-semibold mb-3">Add-Ons (Optional)</h3>
 
-                {addOns.map((addon) => {
-                  const active = selectedAddOns.includes(addon.id);
+                <div className="space-y-3">
+                  {addOns.map((addon) => {
+                    if (!addon.id) return null;
+                    const active = selectedAddOns.includes(addon.id);
 
-                  return (
-                    <div
-                      key={addon.id}
-                      onClick={() => handleToggleAddOn(addon.id)}
-                      className={`p-4 border rounded-lg mb-3 cursor-pointer transition-all
-                        ${
-                          active
+                    return (
+                      <div
+                        key={addon.id}
+                        onClick={() => handleToggleAddOn(addon.id!)}
+                        className={`p-4 border rounded-lg cursor-pointer transition-all
+                          ${active
                             ? "bg-purple-50 border-purple-400"
-                            : "border-gray-200 hover:border-purple-200"
-                        }
-                      `}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium">{addon.name}</p>
-                          <p className="text-sm text-gray-500">
-                            {formatRupiah(addon.price)}
-                          </p>
+                            : "border-gray-200 hover:border-purple-200 hover:bg-gray-50"
+                          }
+                        `}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-medium">{addon.name}</p>
+                            <p className="text-sm text-gray-500">
+                              {formatRupiah(addon.price)}
+                            </p>
+                          </div>
+                          {active && (
+                            <CheckCircle2 className="text-purple-600 w-5 h-5 flex-shrink-0 ml-2" />
+                          )}
                         </div>
-                        {active && (
-                          <CheckCircle2 className="text-purple-600 w-5 h-5" />
-                        )}
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -258,7 +274,7 @@ const DetailProduk = () => {
               </div>
 
               <button
-                className="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold hover:bg-purple-700 transition"
+                className="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold hover:bg-purple-700 transition active:scale-95"
                 onClick={() =>
                   navigate("/payment", {
                     state: {
@@ -288,41 +304,48 @@ const DetailProduk = () => {
           onClick={() => setShowAddOnsPopup(false)}
         >
           <div
-            className="w-full bg-white rounded-t-3xl max-h-[75vh]"
+            className="w-full bg-white rounded-t-3xl max-h-[75vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 border-b flex justify-between">
-              <h3 className="font-bold">Pilih Add Ons</h3>
-              <button onClick={() => setShowAddOnsPopup(false)}>
-                <X />
+            <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white z-10">
+              <h3 className="font-bold text-lg">Pilih Add Ons</h3>
+              <button 
+                onClick={() => setShowAddOnsPopup(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-4 overflow-y-auto">
-              {addOns.map((addon) => (
-                <div
-                  key={addon.id}
-                  onClick={() => handleToggleAddOn(addon.id)}
-                  className={`p-3 border rounded-xl mb-3 flex justify-between
-                    ${
-                      selectedAddOns.includes(addon.id)
-                        ? "border-purple-500 bg-purple-50"
-                        : "border-gray-200"
-                    }
-                  `}
-                >
-                  <div>
-                    <p className="font-medium">{addon.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {formatRupiah(addon.price)}
-                    </p>
-                  </div>
+            <div className="p-4 overflow-y-auto max-h-[calc(75vh-60px)]">
+              {addOns.map((addon) => {
+                if (!addon.id) return null;
+                const active = selectedAddOns.includes(addon.id);
 
-                  {selectedAddOns.includes(addon.id) && (
-                    <CheckCircle2 className="text-purple-600" />
-                  )}
-                </div>
-              ))}
+                return (
+                  <div
+                    key={addon.id}
+                    onClick={() => handleToggleAddOn(addon.id!)}
+                    className={`p-4 border rounded-xl mb-3 flex justify-between items-center cursor-pointer transition
+                      ${active
+                        ? "border-purple-500 bg-purple-50"
+                        : "border-gray-200 hover:bg-gray-50"
+                      }
+                    `}
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium">{addon.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {formatRupiah(addon.price)}
+                      </p>
+                    </div>
+
+                    {active && (
+                      <CheckCircle2 className="text-purple-600 w-5 h-5 flex-shrink-0 ml-2" />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
