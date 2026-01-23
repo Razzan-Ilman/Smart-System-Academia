@@ -264,6 +264,16 @@ export const authService = {
             localStorage.setItem('refresh_token', refreshToken);
         }
 
+        // Store user data (name, email, role) from API response
+        const user = data?.data?.user || data?.user || data?.data || {};
+        const userData = {
+            name: user.name || user.Name || user.username || user.Username || email.split('@')[0],
+            email: user.email || user.Email || email,
+            role: user.role || user.Role || 'admin',
+            id: user.id || user.Id || user.user_id || user.UserId
+        };
+        localStorage.setItem('user_data', JSON.stringify(userData));
+
         return response.data;
     },
 
@@ -322,10 +332,33 @@ export const authService = {
         return !!localStorage.getItem('admin_token');
     },
 
-    // Get user data
+    // Get user data from localStorage
     getUserData: () => {
         const userData = localStorage.getItem('user_data');
         return userData ? JSON.parse(userData) : null;
+    },
+
+    // Get user profile from API
+    getUserProfile: async () => {
+        try {
+            const response = await axiosInstance.get('/user/profile');
+            const user = response.data.data || response.data;
+
+            // Update localStorage with fresh data
+            const userData = {
+                name: user.name || user.Name || user.username || user.Username,
+                email: user.email || user.Email,
+                role: user.role || user.Role || 'admin',
+                id: user.id || user.Id || user.user_id || user.UserId
+            };
+            localStorage.setItem('user_data', JSON.stringify(userData));
+
+            return userData;
+        } catch (error) {
+            console.error('Failed to fetch user profile:', error);
+            // Return cached data if API fails
+            return authService.getUserData();
+        }
     },
 
     // Clear user data
@@ -381,6 +414,128 @@ export const transactionService = {
             { originalReferenceNo }
         );
         return response.data;
+    },
+
+    // Get monthly statistics (transaction count and revenue per month for a specific year)
+    getMonthlyStats: async (year: number) => {
+        try {
+            // Try to fetch from dedicated endpoint first
+            const response = await axiosInstance.get(`/transaksi/stats/monthly?year=${year}`);
+            return response.data;
+        } catch (error: any) {
+            // If stats endpoint doesn't exist (404) or method not allowed (405), try fallback
+            if (error.response?.status === 404 || error.response?.status === 405) {
+                console.log('Stats endpoint not available, trying to fetch all transactions...');
+                try {
+                    const response = await axiosInstance.get('/transaksi');
+                    const transactions = response.data.data || response.data;
+
+                    // Initialize months array
+                    const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                    const monthlyStats = monthNames.map((name, index) => ({
+                        month: index + 1,
+                        month_name: name,
+                        transaction_count: 0,
+                        total_revenue: 0
+                    }));
+
+                    // Aggregate transactions by month
+                    if (Array.isArray(transactions)) {
+                        transactions.forEach((transaction: any) => {
+                            const createdAt = transaction.created_at || transaction.CreatedAt || transaction.createdAt;
+                            if (createdAt) {
+                                const date = new Date(createdAt);
+                                if (date.getFullYear() === year) {
+                                    const monthIndex = date.getMonth();
+                                    monthlyStats[monthIndex].transaction_count++;
+
+                                    // Sum up total amount (gross_amount or total_price)
+                                    const amount = transaction.gross_amount || transaction.GrossAmount ||
+                                        transaction.total_price || transaction.TotalPrice || 0;
+                                    monthlyStats[monthIndex].total_revenue += Number(amount);
+                                }
+                            }
+                        });
+                    }
+
+                    return { data: monthlyStats };
+                } catch (fallbackError: any) {
+                    // If fallback also fails, return empty data
+                    console.error('Failed to fetch transactions for aggregation:', fallbackError);
+                    const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                    return {
+                        data: monthNames.map((name, index) => ({
+                            month: index + 1,
+                            month_name: name,
+                            transaction_count: 0,
+                            total_revenue: 0
+                        }))
+                    };
+                }
+            }
+            // For other errors, throw them
+            throw error;
+        }
+    },
+
+    // Get yearly statistics (transaction count and revenue per year)
+    getYearlyStats: async () => {
+        try {
+            // Try to fetch from dedicated endpoint first
+            const response = await axiosInstance.get('/transaksi/stats/yearly');
+            return response.data;
+        } catch (error: any) {
+            // If stats endpoint doesn't exist (404) or method not allowed (405), try fallback
+            if (error.response?.status === 404 || error.response?.status === 405) {
+                console.log('Stats endpoint not available, trying to fetch all transactions...');
+                try {
+                    const response = await axiosInstance.get('/transaksi');
+                    const transactions = response.data.data || response.data;
+
+                    // Aggregate transactions by year
+                    const yearlyStatsMap: Record<number, { transaction_count: number; total_revenue: number }> = {};
+
+                    if (Array.isArray(transactions)) {
+                        transactions.forEach((transaction: any) => {
+                            const createdAt = transaction.created_at || transaction.CreatedAt || transaction.createdAt;
+                            if (createdAt) {
+                                const date = new Date(createdAt);
+                                const year = date.getFullYear();
+
+                                if (!yearlyStatsMap[year]) {
+                                    yearlyStatsMap[year] = { transaction_count: 0, total_revenue: 0 };
+                                }
+
+                                yearlyStatsMap[year].transaction_count++;
+
+                                // Sum up total amount
+                                const amount = transaction.gross_amount || transaction.GrossAmount ||
+                                    transaction.total_price || transaction.TotalPrice || 0;
+                                yearlyStatsMap[year].total_revenue += Number(amount);
+                            }
+                        });
+                    }
+
+                    // Convert to array and sort by year
+                    const yearlyStats = Object.entries(yearlyStatsMap)
+                        .map(([year, stats]) => ({
+                            year: Number(year),
+                            ...stats
+                        }))
+                        .sort((a, b) => a.year - b.year);
+
+                    return { data: yearlyStats };
+                } catch (fallbackError: any) {
+                    // If fallback also fails, return empty data
+                    console.error('Failed to fetch transactions for aggregation:', fallbackError);
+                    return { data: [] };
+                }
+            }
+            // For other errors, throw them
+            throw error;
+        }
     },
 };
 
