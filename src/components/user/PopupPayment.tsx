@@ -70,7 +70,7 @@ const PopupPayment: React.FC<Props> = ({
                       <img
                         src={m.logo}
                         alt={m.name}
-                        className="max-h-12 max-w-[90%] object-contain"
+                        className="h-20 w-full object-contain"
                         onError={(e) => {
                           const target = e.currentTarget;
                           target.style.display = 'none';
@@ -114,7 +114,7 @@ const PopupPayment: React.FC<Props> = ({
                       <img
                         src={m.logo}
                         alt={m.name}
-                        className="max-h-12 max-w-[90%] object-contain"
+                        className="h-20 w-full object-contain"
                         onError={(e) => {
                           const target = e.currentTarget;
                           target.style.display = 'none';
@@ -158,7 +158,7 @@ const PopupPayment: React.FC<Props> = ({
                       <img
                         src={m.logo}
                         alt={m.name}
-                        className="max-h-12 max-w-[90%] object-contain"
+                        className="h-20 w-full object-contain"
                         onError={(e) => {
                           const target = e.currentTarget;
                           target.style.display = 'none';

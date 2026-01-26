@@ -2,14 +2,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Copy, Check, Clock, Building2, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import Navbar from '../../components/user/Navbar';
-import { getTransactionByTrxId } from '../../services/transactionService';
+import { checkPaymentStatus as checkPaymentAPI } from '../../services/transactionService';
 import { toast } from 'sonner';
 
 const VirtualAccount = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(24 * 60 * 60); // 24 hours in seconds
+  const [timeLeft, setTimeLeft] = useState(24 * 60 * 60);
   const [isChecking, setIsChecking] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState('pending');
@@ -17,21 +17,22 @@ const VirtualAccount = () => {
   // Data dari payment page
   const { amount, email, name, phone, orderId, paymentMethod, transactionData } = location.state || {};
 
-  // Get real VA Number from API response
+  // ✅ Get real VA Number from transaction data
   const vaNumber = useMemo(() => {
-    // Check all possible fields for VA number
     if (transactionData) {
       const realVA =
         transactionData.virtual_account ||
         transactionData.va_number ||
         transactionData.payment_code ||
-        transactionData.bill_key || // Mandiri Bill Key
-        transactionData.payment_data;
+        transactionData.bill_key ||
+        transactionData.biller_code ||
+        transactionData.payment_data?.va_number ||
+        transactionData.payment_data?.account_number;
 
       if (realVA) return realVA;
     }
 
-    // Fallback if no real VA found (shouldn't happen in prod if API is correct)
+    // Fallback jika tidak ada data VA (seharusnya tidak terjadi di production)
     if (!orderId) {
       return `8808${Math.floor(Math.random() * 10000000000000).toString().padStart(13, '0')}`;
     }
@@ -40,32 +41,93 @@ const VirtualAccount = () => {
     return `8808${vaDigits}`;
   }, [orderId, transactionData]);
 
-  // Bank info berdasarkan payment method
+  // Bank info
   const bankInfo = {
-    bca: { name: 'BCA', color: 'from-blue-600 to-blue-700', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/320px-Bank_Central_Asia.svg.png' },
-    mandiri: { name: 'Bank Mandiri', color: 'from-yellow-500 to-orange-600', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/320px-Bank_Mandiri_logo_2016.svg.png' },
-    bri: { name: 'BRI', color: 'from-blue-500 to-blue-600', logo: '/payment/BRI.jpeg' },
-    bni: { name: 'BNI', color: 'from-orange-500 to-orange-600', logo: 'https://upload.wikimedia.org/wikipedia/id/thumb/5/55/BNI_logo.svg/320px-BNI_logo.svg.png' },
-    permata: { name: 'Permata Bank', color: 'from-green-600 to-green-700', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Bank_Permata_logo.svg/320px-Bank_Permata_logo.svg.png' },
-    bsi: { name: 'Bank Syariah Indonesia', color: 'from-teal-600 to-teal-700', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Bank_Syariah_Indonesia.svg/320px-Bank_Syariah_Indonesia.svg.png' },
-    cimb: { name: 'CIMB Niaga', color: 'from-red-600 to-red-700', logo: '/payment/CIMB_Niaga.jpeg' },
-    sinarmas: { name: 'Bank Sinarmas', color: 'from-red-500 to-red-600', logo: '/payment/Bank_Sinarmas.jpeg' },
-    muamalat: { name: 'Bank Muamalat', color: 'from-purple-700 to-purple-800', logo: '/payment/Bank_Muamalat.jpeg' },
-    bnc: { name: 'Bank Neo Commerce', color: 'from-yellow-400 to-yellow-500', logo: '/payment/Bank_Neo_Commerce.jpeg' },
-    maybank: { name: 'Maybank', color: 'from-yellow-500 to-yellow-600', logo: '/payment/MayBank.jpeg' },
-    indomaret: { name: 'Indomaret', color: 'from-blue-600 to-red-600', logo: '/payment/Indomaret.jpeg' },
-    alfamart: { name: 'Alfamart', color: 'from-red-600 to-red-700', logo: '/payment/Alfamart.jpeg' },
-    default: { name: 'Virtual Account', color: 'from-purple-600 to-pink-600', logo: '' }
+    bca: { 
+      name: 'BCA', 
+      color: 'from-blue-600 to-blue-700', 
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/320px-Bank_Central_Asia.svg.png' 
+    },
+    mandiri: { 
+      name: 'Bank Mandiri', 
+      color: 'from-yellow-500 to-orange-600', 
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/320px-Bank_Mandiri_logo_2016.svg.png' 
+    },
+    bri: { 
+      name: 'BRI', 
+      color: 'from-blue-500 to-blue-600', 
+      logo: '/payment/BRI.jpeg' 
+    },
+    bni: { 
+      name: 'BNI', 
+      color: 'from-orange-500 to-orange-600', 
+      logo: 'https://upload.wikimedia.org/wikipedia/id/thumb/5/55/BNI_logo.svg/320px-BNI_logo.svg.png' 
+    },
+    permata: { 
+      name: 'Permata Bank', 
+      color: 'from-green-600 to-green-700', 
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Bank_Permata_logo.svg/320px-Bank_Permata_logo.svg.png' 
+    },
+    bsi: { 
+      name: 'Bank Syariah Indonesia', 
+      color: 'from-teal-600 to-teal-700', 
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Bank_Syariah_Indonesia.svg/320px-Bank_Syariah_Indonesia.svg.png' 
+    },
+    cimb: { 
+      name: 'CIMB Niaga', 
+      color: 'from-red-600 to-red-700', 
+      logo: '/payment/CIMB_Niaga.jpeg' 
+    },
+    sinarmas: { 
+      name: 'Bank Sinarmas', 
+      color: 'from-red-500 to-red-600', 
+      logo: '/payment/Bank_Sinarmas.jpeg' 
+    },
+    muamalat: { 
+      name: 'Bank Muamalat', 
+      color: 'from-purple-700 to-purple-800', 
+      logo: '/payment/Bank_Muamalat.jpeg' 
+    },
+    bnc: { 
+      name: 'Bank Neo Commerce', 
+      color: 'from-yellow-400 to-yellow-500', 
+      logo: '/payment/Bank_Neo_Commerce.jpeg' 
+    },
+    maybank: { 
+      name: 'Maybank', 
+      color: 'from-yellow-500 to-yellow-600', 
+      logo: '/payment/MayBank.jpeg' 
+    },
+    indomaret: { 
+      name: 'Indomaret', 
+      color: 'from-blue-600 to-red-600', 
+      logo: '/payment/Indomaret.jpeg' 
+    },
+    alfamart: { 
+      name: 'Alfamart', 
+      color: 'from-red-600 to-red-700', 
+      logo: '/payment/Alfamart.jpeg' 
+    },
+    default: { 
+      name: 'Virtual Account', 
+      color: 'from-purple-600 to-pink-600', 
+      logo: '' 
+    }
   };
 
   const currentBank = bankInfo[paymentMethod as keyof typeof bankInfo] || bankInfo.default;
 
+  // ✅ Timer countdown
   useEffect(() => {
-    // Calculate initial time left based on API expiry or default to 24h
     let initialSeconds = 24 * 60 * 60;
 
     if (transactionData) {
-      const expiryString = transactionData.expiry_time || transactionData.expired_at || transactionData.expiry_date;
+      const expiryString = 
+        transactionData.expiry_time || 
+        transactionData.expired_at || 
+        transactionData.expiry_date ||
+        transactionData.payment_data?.expiry_time;
+
       if (expiryString) {
         const expiryDate = new Date(expiryString).getTime();
         const now = new Date().getTime();
@@ -89,7 +151,7 @@ const VirtualAccount = () => {
     return () => clearInterval(timer);
   }, [transactionData]);
 
-  // Format helper
+  // Format helpers
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -111,21 +173,30 @@ const VirtualAccount = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // ================= STATUS CHECK LOGIN =================
+  // ✅ CHECK PAYMENT STATUS (menggunakan endpoint backend proxy)
   const checkPaymentStatus = async () => {
-    if (isChecking) return;
+    if (isChecking || !orderId) return;
 
     setIsChecking(true);
     setPaymentStatus('checking');
 
     try {
-      const result = await getTransactionByTrxId(orderId);
+      // ✅ Gunakan checkPaymentAPI dari service (yang sudah mengarah ke backend proxy)
+      const result = await checkPaymentAPI(orderId);
 
-      const status = result?.data?.payment_status || result?.data?.status || result?.payment_status || result?.status;
+      // ✅ Normalisasi status dari berbagai kemungkinan response
+      const status = 
+        result?.data?.payment_status || 
+        result?.data?.status || 
+        result?.payment_status || 
+        result?.status;
 
-      if (status === 'PAID' || status === 'SUCCESS' || status === 'settlement') {
+      const statusLower = (status || '').toLowerCase();
+
+      if (['paid', 'success', 'settlement', 'completed'].includes(statusLower)) {
         setPaymentStatus('success');
-        toast.success('Pembayaran berhasil!');
+        toast.success('Pembayaran berhasil! 🎉');
+        
         setTimeout(() => {
           navigate('/payment-success', {
             state: {
@@ -139,9 +210,10 @@ const VirtualAccount = () => {
             }
           });
         }, 2000);
-      } else if (status === 'FAILED' || status === 'EXPIRED' || status === 'cancel') {
+      } else if (['failed', 'expired', 'cancel', 'cancelled', 'expire'].includes(statusLower)) {
         setPaymentStatus('failed');
-        toast.error('Pembayaran gagal atau kadaluarsa');
+        toast.error('Pembayaran gagal atau kadaluarsa ❌');
+        
         setTimeout(() => {
           navigate('/payment-failed', {
             state: {
@@ -153,28 +225,32 @@ const VirtualAccount = () => {
           });
         }, 2000);
       } else {
+        // Status masih pending
         setPaymentStatus('pending');
-        // Only toast if manually clicking check button
-        if (document.activeElement?.id === 'btn-check-status') {
-          toast.info('Pembayaran belum diterima, silakan coba lagi sesaat lagi.');
-        }
       }
-    } catch (error) {
-      console.error('Check status error:', error);
+    } catch (error: any) {
+      console.error('❌ Check status error:', error);
       setPaymentStatus('pending');
-      // Show error message for network/API failures
-      toast.error('Gagal memeriksa status. Akan dicoba lagi otomatis.');
+      
+      // Hanya tampilkan error jika bukan auto-check
+      if (document.activeElement?.id === 'btn-check-status') {
+        const errorMsg = error.response?.data?.message || 'Gagal memeriksa status pembayaran';
+        toast.error(errorMsg);
+      }
     } finally {
       setIsChecking(false);
     }
   };
 
-  // Auto-poll every 5 seconds
+  // ✅ Auto-poll every 5 seconds (hanya jika status pending)
   useEffect(() => {
-    if (paymentStatus !== 'pending') return;
+    if (paymentStatus !== 'pending' || !orderId) return;
 
-    // Initial delay to avoid instant check
+    // Initial check setelah 3 detik
     const timeout = setTimeout(() => {
+      checkPaymentStatus();
+
+      // Lalu polling setiap 5 detik
       const interval = setInterval(() => {
         checkPaymentStatus();
       }, 5000);
@@ -185,12 +261,19 @@ const VirtualAccount = () => {
     return () => clearTimeout(timeout);
   }, [paymentStatus, orderId]);
 
-
-
   const handleCancelPayment = () => {
     setShowCancelModal(false);
+    toast.info('Pembayaran dibatalkan');
     navigate('/payment', { replace: true });
   };
+
+  // ✅ Redirect jika tidak ada data
+  useEffect(() => {
+    if (!orderId || !amount) {
+      toast.error('Data pembayaran tidak valid');
+      navigate('/payment', { replace: true });
+    }
+  }, [orderId, amount, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-100 relative overflow-hidden">
@@ -269,6 +352,7 @@ const VirtualAccount = () => {
                     <button
                       onClick={() => copyToClipboard(vaNumber)}
                       className="ml-4 p-2 bg-white/20 hover:bg-white/30 rounded-lg transition"
+                      aria-label="Copy VA Number"
                     >
                       {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                     </button>
@@ -323,7 +407,7 @@ const VirtualAccount = () => {
                   </div>
                   <div>
                     <p className="font-semibold text-gray-800">Selesai</p>
-                    <p className="text-sm text-gray-600">Pembayaran akan dikonfirmasi secara otomatis setelah bank memproses transaksi</p>
+                    <p className="text-sm text-gray-600">Pembayaran akan dikonfirmasi otomatis dalam beberapa menit</p>
                   </div>
                 </div>
               </div>
@@ -360,36 +444,42 @@ const VirtualAccount = () => {
               </div>
             </div>
 
-            {/* Auto Check Status Info */}
+            {/* Manual Check Button */}
+            <button
+              id="btn-check-status"
+              onClick={checkPaymentStatus}
+              disabled={isChecking || paymentStatus === 'success'}
+              className="w-full py-4 rounded-2xl font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
+            >
+              <RefreshCw className={`w-5 h-5 ${isChecking ? 'animate-spin' : ''}`} />
+              {isChecking ? 'Memeriksa...' : 'Cek Status Pembayaran'}
+            </button>
+
+            {/* Auto Check Info */}
             <div className="bg-purple-50 border-2 border-purple-200 rounded-2xl p-6 text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <RefreshCw className={`w-5 h-5 text-purple-600 ${paymentStatus === 'pending' ? 'animate-spin' : ''}`} />
-                <p className="font-semibold text-purple-900">Status Pembayaran</p>
+                <p className="font-semibold text-purple-900">Pembaruan Otomatis</p>
               </div>
               {paymentStatus === 'pending' && (
                 <p className="text-sm text-purple-700">
-                  Status akan diperbarui otomatis setiap 5 detik
+                  Status diperbarui otomatis setiap 5 detik
                 </p>
               )}
               {paymentStatus === 'success' && (
                 <p className="text-sm text-green-700 font-semibold">
-                  ✓ Pembayaran Anda telah berhasil dikonfirmasi
-                </p>
-              )}
-              {paymentStatus === 'checking' && (
-                <p className="text-sm text-blue-700">
-                  Sedang memeriksa status pembayaran...
+                  ✓ Pembayaran berhasil dikonfirmasi
                 </p>
               )}
             </div>
 
-            {/* Cancel Payment Button */}
+            {/* Cancel Button */}
             <button
               onClick={() => setShowCancelModal(true)}
               disabled={paymentStatus === 'success' || paymentStatus === 'checking'}
-              className="w-full py-4 rounded-2xl font-semibold text-gray-600 bg-white border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-all disabled:opacity-50"
+              className="w-full py-4 rounded-2xl font-semibold text-gray-600 bg-white border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Batalkan (selama belum dibayar)
+              Batalkan Pembayaran
             </button>
 
             {/* Important Notes */}
@@ -400,10 +490,9 @@ const VirtualAccount = () => {
                   <p className="font-semibold text-amber-900 text-sm mb-2">Penting!</p>
                   <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
                     <li>Transfer sesuai nominal yang tertera</li>
-                    <li>Sistem akan mendeteksi pembayaran secara otomatis (24 jam)</li>
-                    <li>Simpan bukti transfer sebagai cadangan</li>
-                    <li>Jika saldo terpotong tapi status tidak berubah hubungi CS</li>
-                    <li>Jika status belum berubah dalam 10 menit, silakan hubungi admin</li>
+                    <li>Sistem mendeteksi pembayaran otomatis</li>
+                    <li>Simpan bukti transfer</li>
+                    <li>Jika 10 menit belum update, hubungi admin</li>
                   </ul>
                 </div>
               </div>
@@ -412,7 +501,7 @@ const VirtualAccount = () => {
         </div>
       </div>
 
-      {/* Cancel Confirmation Modal */}
+      {/* Cancel Modal */}
       {showCancelModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
@@ -422,14 +511,14 @@ const VirtualAccount = () => {
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Batalkan Pembayaran?</h3>
               <p className="text-gray-600 mb-6">
-                Apakah Anda yakin ingin membatalkan pembayaran ini? Nomor Virtual Account akan hangus dan Anda harus membuat pesanan baru.
+                Nomor Virtual Account akan hangus dan Anda harus membuat pesanan baru.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowCancelModal(false)}
                   className="flex-1 py-3 rounded-xl font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
                 >
-                  Tidak, Lanjutkan
+                  Tidak
                 </button>
                 <button
                   onClick={handleCancelPayment}

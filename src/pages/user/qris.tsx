@@ -165,11 +165,36 @@ const QRISPayment = () => {
         setPaymentStatus('pending');
       }
     } catch (error: any) {
-      console.error('Error confirming payment:', error.response?.data || error.message);
-      const errorMsg = error.response?.data?.message || 'Gagal mengonfirmasi pembayaran. Pastikan Anda sudah membayar atau tunggu beberapa saat.';
-      toast.error(errorMsg);
-      setPaymentStatus('pending');
-    } finally {
+  const errorData = error.response?.data;
+
+  if (errorData?.message === 'Trx already confirmed') {
+    // ⬇️ ANGAP INI SUCCESS
+    setPaymentStatus('success');
+    toast.success('Pembayaran sudah terkonfirmasi sebelumnya');
+
+    navigate('/payment-success', {
+      state: {
+        orderId: orderNumber,
+        amount: totalAmount,
+        email: buyerEmail,
+        name: buyerName,
+        phone: buyerPhone,
+        items: stateData.items || [],
+        transactionData
+      }
+    });
+
+    return;
+  }
+
+  console.error('Error confirming payment:', errorData || error.message);
+  toast.error(
+    errorData?.message ||
+    'Gagal mengonfirmasi pembayaran. Silakan tunggu beberapa saat.'
+  );
+
+  setPaymentStatus('pending');
+}finally {
       setIsChecking(false);
     }
   };

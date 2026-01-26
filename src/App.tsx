@@ -13,7 +13,9 @@ import AdminProduk from "./pages/admin/Produk";
 import AdminTambahProduk from "./pages/admin/TambahProduk";
 import AdminEditProduk from "./pages/admin/EditProduk";
 import AdminEditAddOns from "./pages/admin/EditAddOns";
-import AdminListTransaksi from "./pages/admin/ListTransaksi";
+import { ListTransaksi } from "./pages/admin/ListTransaksi";
+
+
 
 // USER PAGES
 import Home from "./pages/user/Home";
@@ -56,7 +58,7 @@ function App() {
             <Route path="produk/tambah" element={<AdminTambahProduk />} />
             <Route path="produk/edit/:id" element={<AdminEditProduk />} />
             <Route path="produk/:productId/add-ons/edit/:addOnId" element={<AdminEditAddOns />} />
-            <Route path="list-transaksi" element={<AdminListTransaksi />} />
+            <Route path="list-transaksi" element={<ListTransaksi />} />
           </Route>
 
           {/* 404 Not Found - Catch all routes */}
