@@ -4,6 +4,7 @@ import { ShoppingCart, CreditCard, CheckCircle2, User, Mail, Phone, Plus, Chevro
 import Navbar from '../../components/user/Navbar';
 import PopupPayment from '../../components/user/PopupPayment';
 import { toast } from 'sonner';
+import { createTransaction as apiCreateTransaction } from '../../services/transactionService';
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -17,12 +18,34 @@ const Payment = () => {
   // Get dynamic data from DetailProduk
   const stateData = location.state || {};
 
+  // Sanitize product name (remove HTML entities and decode)
+  const sanitizeProductName = (name: string) => {
+    if (!name) return 'Judul Produk';
+
+    // Check if it looks like base64 or encoded string (contains +, /, =, etc.)
+    // Pattern: starts with / or contains many special chars
+    if (name.startsWith('/') || /^[A-Za-z0-9+/=]+$/.test(name) && name.length > 20) {
+      console.warn('Product name appears to be encoded, replacing with default');
+      return 'Judul Produk';
+    }
+
+    // Create a temporary div to decode HTML entities
+    const temp = document.createElement('div');
+    temp.innerHTML = name;
+    const decoded = temp.textContent || temp.innerText || name;
+
+    // Remove any remaining special characters or encoded strings
+    const cleaned = decoded.replace(/[^\w\s\-.,()]/gi, '').trim();
+
+    return cleaned || 'Judul Produk';
+  };
+
   // ================= DATA CART =================
   const cartItems = [
     {
       id: 1,
-      name: stateData.productName || 'Judul Produk',
-      category: stateData.productCategory || 'Kilas Produk',
+      name: sanitizeProductName(stateData.productName) || 'Judul Produk',
+      category: stateData.productCategory && stateData.productCategory !== 'undefined' ? stateData.productCategory : 'Produk',
       price: stateData.basePrice || 150000,
       image: stateData.productImage || '👗',
       quantity: 1
@@ -86,91 +109,91 @@ const Payment = () => {
       id: "qris",
       name: "QRIS",
       category: "Instant Payment",
-      logo: "/payment/qris.png",
+      logo: "https://seeklogo.com/images/Q/quick-response-code-indonesian-standard-qris-logo-F300E06C32-seeklogo.com.png",
     },
     {
       id: "permata",
       name: "Permata Bank",
       category: "Virtual Account",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Bank_Permata_logo.svg/320px-Bank_Permata_logo.svg.png",
+      logo: "https://companieslogo.com/img/orig/BNLI.JK-b3anak29.png",
     },
     {
       id: "bca",
       name: "BCA",
       category: "Virtual Account",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/320px-Bank_Central_Asia.svg.png",
+      logo: "https://seeklogo.com/images/B/bca-bank-central-asia-logo-55D1A4B152-seeklogo.com.png",
     },
     {
       id: "bsi",
       name: "Bank Syariah Indonesia",
       category: "Virtual Account",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Bank_Syariah_Indonesia.svg/320px-Bank_Syariah_Indonesia.svg.png",
+      logo: "https://seeklogo.com/images/B/bank-syariah-indonesia-logo-95DB1E362B-seeklogo.com.png",
     },
     {
       id: "bri",
       name: "BRI",
       category: "Virtual Account",
-      logo: "https://id.wikipedia.org/wiki/Bank_Rakyat_Indonesia",
+      logo: "https://seeklogo.com/images/B/bri-bank-rakyat-indonesia-logo-DE66D84A1B-seeklogo.com.png",
     },
     {
       id: "mandiri",
       name: "Bank Mandiri",
       category: "Virtual Account",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/320px-Bank_Mandiri_logo_2016.svg.png",
+      logo: "https://seeklogo.com/images/B/bank-mandiri-logo-27C9202ED8-seeklogo.com.png",
     },
     {
       id: "bni",
       name: "BNI",
       category: "Virtual Account",
-      logo: "https://upload.wikimedia.org/wikipedia/id/thumb/5/55/BNI_logo.svg/320px-BNI_logo.svg.png",
+      logo: "https://seeklogo.com/images/B/bank-negara-indonesia-logo-{BE5FEFF5C0}-seeklogo.com.png",
     },
     {
       id: "mandiri_va",
       name: "Mandiri Virtual Account",
       category: "Virtual Account",
-      logo: "/payment/Mandiri_Virtual_Account.jpeg",
+      logo: "https://seeklogo.com/images/B/bank-mandiri-logo-27C9202ED8-seeklogo.com.png",
     },
     {
       id: "muamalat",
       name: "Bank Muamalat",
       category: "Virtual Account",
-      logo: "/payment/Bank_Muamalat.jpeg",
+      logo: "https://companieslogo.com/img/orig/BMRI.JK_BIG-91007aa8.png",
     },
     {
       id: "cimb",
       name: "CIMB Niaga",
       category: "Virtual Account",
-      logo: "/payment/CIMB_Niaga.jpeg",
+      logo: "https://seeklogo.com/images/C/cimb-niaga-logo-B09E1ABF18-seeklogo.com.png",
     },
     {
       id: "sinarmas",
       name: "Bank Sinarmas",
       category: "Virtual Account",
-      logo: "/payment/Bank_Sinarmas.jpeg",
+      logo: "https://companieslogo.com/img/orig/BSIM.JK-fc1e73b7.png",
     },
     {
       id: "bnc",
       name: "Bank Neo Commerce",
       category: "Virtual Account",
-      logo: "/payment/Bank_Neo_Commerce.jpeg",
+      logo: "https://seeklogo.com/images/B/bank-neo-commerce-logo-EB293BAFDE-seeklogo.com.png",
     },
     {
       id: "maybank",
       name: "Maybank",
       category: "Virtual Account",
-      logo: "/payment/MayBank.jpeg",
+      logo: "https://seeklogo.com/images/M/maybank-logo-D89130BAC0-seeklogo.com.png",
     },
     {
       id: "indomaret",
       name: "Indomaret",
       category: "Other",
-      logo: "/payment/Indomaret.jpeg",
+      logo: "https://seeklogo.com/images/I/indomaret-logo-58D01ACC3E-seeklogo.com.png",
     },
     {
       id: "alfamart",
       name: "Alfamart",
       category: "Other",
-      logo: "/payment/Alfamart.jpeg",
+      logo: "https://seeklogo.com/images/A/alfamart-logo-3A5A28Eymes-seeklogo.com.png",
     },
   ];
 
@@ -182,10 +205,9 @@ const Payment = () => {
     addOns.reduce((sum: number, a: any) => sum + a.price, 0);
 
   const discount = 0;
-  const convenienceFee = 5000;
 
   const totalPrice =
-    calculateSubtotal() + calculateAddOns() - discount + convenienceFee;
+    calculateSubtotal() + calculateAddOns() - discount;
 
   const formatRupiah = (value: number) =>
     new Intl.NumberFormat("id-ID", {
@@ -197,7 +219,7 @@ const Payment = () => {
   // ================= API TRANSACTION HANDLER =================
   const createTransaction = async () => {
     setIsProcessing(true);
-    
+
     try {
       const payload = {
         name: buyerInfo.name,
@@ -208,23 +230,11 @@ const Payment = () => {
         add_ons_ids: stateData.selectedAddOnsIds || []
       };
 
-      const response = await fetch('https://ssa-payment.lskk.co.id/api/v1/transaksi', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
+      const result = await apiCreateTransaction(payload);
 
-      const result = await response.json();
+      // Success - Use trx_id from API response for order tracking
+      const orderId = result.data?.trx_id || result.data?.order_id || result.trx_id || result.order_id || `ORD-${Date.now()}`;
 
-      if (!response.ok) {
-        throw new Error(result.message || 'Gagal membuat transaksi');
-      }
-
-      // Success - Navigate based on payment type
-      const orderId = result.data?.order_id || `ORD-${Date.now()}`;
-      
       if (selectedPayment === "qris") {
         navigate("/qris", {
           state: {
@@ -234,7 +244,7 @@ const Payment = () => {
             phone: buyerInfo.phone,
             orderId: orderId,
             items: cartItems,
-            transactionData: result.data
+            transactionData: result.data || result
           }
         });
         return;
@@ -257,7 +267,7 @@ const Payment = () => {
             orderId: orderId,
             paymentMethod: selectedPayment,
             items: cartItems,
-            transactionData: result.data
+            transactionData: result.data || result
           }
         });
         return;
@@ -273,7 +283,7 @@ const Payment = () => {
             orderId: orderId,
             paymentMethod: selectedPayment,
             items: cartItems,
-            transactionData: result.data
+            transactionData: result.data || result
           }
         });
         return;
@@ -283,7 +293,8 @@ const Payment = () => {
 
     } catch (error: any) {
       console.error('Transaction error:', error);
-      toast.error(error.message || 'Gagal membuat transaksi. Silakan coba lagi.');
+      const errorMsg = error.response?.data?.message || error.message || 'Gagal membuat transaksi. Silakan coba lagi.';
+      toast.error(errorMsg);
     } finally {
       setIsProcessing(false);
     }
@@ -350,10 +361,7 @@ const Payment = () => {
                     <span className="font-semibold">{formatRupiah(calculateAddOns())}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-gray-700 pb-2 border-b border-gray-200">
-                  <span>Convenience fee</span>
-                  <span className="font-semibold">{formatRupiah(convenienceFee)}</span>
-                </div>
+
                 <div className="flex justify-between items-center pt-2">
                   <span className="font-bold text-gray-800">TOTAL</span>
                   <span className="text-base font-bold text-purple-600">
@@ -381,8 +389,8 @@ const Payment = () => {
                       if (errors.email) setErrors({ ...errors, email: '' });
                     }}
                     className={`w-full px-3 lg:px-4 py-2 lg:py-3 text-sm rounded-xl border-2 outline-none transition-all ${errors.email
-                        ? 'border-red-300 bg-red-50 focus:border-red-400 focus:ring-4 focus:ring-red-100'
-                        : 'border-gray-100 bg-gray-50 focus:border-purple-400 focus:ring-4 focus:ring-purple-100'
+                      ? 'border-red-300 bg-red-50 focus:border-red-400 focus:ring-4 focus:ring-red-100'
+                      : 'border-gray-100 bg-gray-50 focus:border-purple-400 focus:ring-4 focus:ring-purple-100'
                       }`}
                     placeholder="contoh@email.com"
                   />
@@ -406,8 +414,8 @@ const Payment = () => {
                       if (errors.name) setErrors({ ...errors, name: '' });
                     }}
                     className={`w-full px-3 lg:px-4 py-2 lg:py-3 text-sm rounded-xl border-2 outline-none transition-all ${errors.name
-                        ? 'border-red-300 bg-red-50 focus:border-red-400 focus:ring-4 focus:ring-red-100'
-                        : 'border-gray-100 bg-gray-50 focus:border-purple-400 focus:ring-4 focus:ring-purple-100'
+                      ? 'border-red-300 bg-red-50 focus:border-red-400 focus:ring-4 focus:ring-red-100'
+                      : 'border-gray-100 bg-gray-50 focus:border-purple-400 focus:ring-4 focus:ring-purple-100'
                       }`}
                     placeholder="Nama lengkap Anda"
                   />
@@ -431,8 +439,8 @@ const Payment = () => {
                       if (errors.phone) setErrors({ ...errors, phone: '' });
                     }}
                     className={`w-full px-3 lg:px-4 py-2 lg:py-3 text-sm rounded-xl border-2 outline-none transition-all ${errors.phone
-                        ? 'border-red-300 bg-red-50 focus:border-red-400 focus:ring-4 focus:ring-red-100'
-                        : 'border-gray-100 bg-gray-50 focus:border-purple-400 focus:ring-4 focus:ring-purple-100'
+                      ? 'border-red-300 bg-red-50 focus:border-red-400 focus:ring-4 focus:ring-red-100'
+                      : 'border-gray-100 bg-gray-50 focus:border-purple-400 focus:ring-4 focus:ring-purple-100'
                       }`}
                     placeholder="08xxxxxxxxxx"
                   />
@@ -548,12 +556,28 @@ const Payment = () => {
               <div className="p-4 lg:p-6 space-y-4">
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex gap-3 lg:gap-4 p-3 lg:p-4 rounded-2xl bg-gradient-to-br from-pink-50 to-purple-50 border border-pink-100">
-                    <div className="w-16 h-16 lg:w-20 lg:h-20 bg-white rounded-xl flex items-center justify-center text-3xl lg:text-4xl shadow-sm">
-                      {item.image}
+                    <div className="w-16 h-16 lg:w-20 lg:h-20 bg-white rounded-xl flex items-center justify-center text-3xl lg:text-4xl shadow-sm overflow-hidden">
+                      {(item.image && (item.image.startsWith('http') || item.image.startsWith('data:') || item.image.startsWith('/'))) ? (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.parentElement!.innerText = '👗';
+                          }}
+                        />
+                      ) : (
+                        <span>{item.image}</span>
+                      )}
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-sm lg:text-base text-gray-800">{item.name}</h3>
-                      <p className="text-xs lg:text-sm text-gray-600">{item.category}</p>
+                      <h3 className="font-semibold text-sm lg:text-base text-gray-800">
+                        {sanitizeProductName(item.name)}
+                      </h3>
+                      <p className="text-xs lg:text-sm text-gray-600">
+                        {sanitizeProductName(item.category)}
+                      </p>
                       <p className="text-base lg:text-lg font-bold text-purple-600 mt-1">
                         {formatRupiah(item.price)}
                       </p>
@@ -600,10 +624,7 @@ const Payment = () => {
                     <span className="font-semibold">-{formatRupiah(discount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-gray-700">
-                  <span>Convenience fee:</span>
-                  <span className="font-semibold">{formatRupiah(convenienceFee)}</span>
-                </div>
+
                 <div className="border-t-2 border-gray-200 pt-3 mt-3">
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-bold text-gray-800">TOTAL</span>

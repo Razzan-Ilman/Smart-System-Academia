@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AppstoreOutlined,
@@ -11,11 +11,14 @@ import { toast } from "sonner";
 import ConfirmModal from "../../components/admin/ConfirmModal";
 import { categoryService } from "../../services/adminService";
 import type { Category as APICategory } from "../../services/adminService";
+import { useDebounce } from "../../hooks/useDebounce";
 
 interface Category {
   id: number;
   name: string;
 }
+
+const ITEMS_PER_PAGE = 10;
 
 export default function KategoriProdukContent() {
   const navigate = useNavigate();
@@ -24,6 +27,10 @@ export default function KategoriProdukContent() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<string>("Semua");
   const [showFilter, setShowFilter] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Debounce search to reduce filtering overhead
+  const debouncedSearch = useDebounce(search, 500);
 
   // Delete State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -83,11 +90,26 @@ export default function KategoriProdukContent() {
     }
   };
 
-  const filteredCategories = categories.filter((item: Category) => {
-    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filterType === "Semua" || item.name === filterType;
-    return matchesSearch && matchesFilter;
-  });
+  // Memoized filtering logic
+  const filteredCategories = useMemo(() => {
+    return categories.filter((item: Category) => {
+      const matchesSearch = item.name.toLowerCase().includes(debouncedSearch.toLowerCase());
+      const matchesFilter = filterType === "Semua" || item.name === filterType;
+      return matchesSearch && matchesFilter;
+    });
+  }, [categories, debouncedSearch, filterType]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCategories.length / ITEMS_PER_PAGE);
+  const paginatedCategories = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredCategories.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredCategories, currentPage]);
+
+  // Reset page when filter/search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, filterType]);
 
   if (loading) {
     return (
@@ -172,48 +194,70 @@ export default function KategoriProdukContent() {
           </div>
 
           {/* Table Rows */}
-          {filteredCategories.length > 0 ? (
-            filteredCategories.map((item: Category, index: number) => (
-              <div
-                key={item.id}
-                className="grid grid-cols-12 items-center p-3 border-t border-gray-100 hover:bg-gray-50 transition"
-              >
-                <div className="col-span-2 pl-4 font-bold">{index + 1}</div>
-                <div className="col-span-6 font-bold">{item.name}</div>
+          {paginatedCategories.length > 0 ? (
+            paginatedCategories.map((item: Category, index: number) => {
+              const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index + 1;
+              return (
+                <div
+                  key={item.id}
+                  className="grid grid-cols-12 items-center p-3 border-t border-gray-100 hover:bg-gray-50 transition"
+                >
+                  <div className="col-span-2 pl-4 font-bold">{globalIndex}</div>
+                  <div className="col-span-6 font-bold">{item.name}</div>
 
-                <div className="col-span-2 flex justify-center">
-                  <button
-                    onClick={() => navigate(`/admin/kategori-produk/edit/${item.id}`)}
-                    className="p-2 text-gray-700 hover:text-blue-600 transition hover:scale-110 active:scale-90"
-                  >
-                    <EditOutlined className="text-2xl" />
-                  </button>
-                </div>
+                  <div className="col-span-2 flex justify-center">
+                    <button
+                      onClick={() => navigate(`/admin/kategori-produk/edit/${item.id}`)}
+                      className="p-2 text-gray-700 hover:text-blue-600 transition hover:scale-110 active:scale-90"
+                    >
+                      <EditOutlined className="text-2xl" />
+                    </button>
+                  </div>
 
-                <div className="col-span-2 flex justify-center">
-                  <button
-                    onClick={() => handleDeleteClick(item.id)}
-                    className="p-2 text-gray-700 hover:text-red-500 transition hover:scale-110 active:scale-90"
-                  >
-                    <DeleteOutlined className="text-2xl" />
-                  </button>
+                  <div className="col-span-2 flex justify-center">
+                    <button
+                      onClick={() => handleDeleteClick(item.id)}
+                      className="p-2 text-gray-700 hover:text-red-500 transition hover:scale-110 active:scale-90"
+                    >
+                      <DeleteOutlined className="text-2xl" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="p-10 text-center text-gray-400 font-medium">
-              Data kategori "{search || filterType}" tidak ditemukan
+              {debouncedSearch ? `Data kategori "${debouncedSearch}" tidak ditemukan` : "Belum ada data kategori"}
             </div>
           )}
 
-          {/* Empty Rows for Aesthetic */}
-          {filteredCategories.length < 5 &&
-            Array.from({ length: 5 - filteredCategories.length }).map((_, i) => (
-              <div key={i} className="grid grid-cols-12 p-5 border-t border-gray-100 opacity-50">
-                <div className="col-span-12 h-4"></div>
+          {/* Desktop Pagination Controls */}
+          {filteredCategories.length > ITEMS_PER_PAGE && (
+            <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+              <p className="text-sm text-gray-600 font-medium">
+                Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredCategories.length)} dari {filteredCategories.length} kategori
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 disabled:opacity-50 hover:bg-gray-50 transition text-sm font-medium"
+                >
+                  Prev
+                </button>
+                <div className="flex items-center gap-1 mx-2">
+                  <span className="text-sm font-bold text-gray-700">Page {currentPage} of {totalPages}</span>
+                </div>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 disabled:opacity-50 hover:bg-gray-50 transition text-sm font-medium"
+                >
+                  Next
+                </button>
               </div>
-            ))
-          }
+            </div>
+          )}
         </div>
 
         {/* Mobile Card View - Shown on Mobile/Tablet */}
@@ -226,44 +270,72 @@ export default function KategoriProdukContent() {
           </div>
 
           {/* Category Cards */}
-          {filteredCategories.length > 0 ? (
-            filteredCategories.map((item: Category, index: number) => (
-              <div
-                key={item.id}
-                className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm hover:shadow-md transition"
-              >
-                <div className="grid grid-cols-3 gap-3 items-center">
-                  {/* Category Name */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-500 flex-shrink-0">{index + 1}.</span>
-                    <p className="font-bold text-sm text-gray-800 truncate">{item.name}</p>
-                  </div>
+          {paginatedCategories.length > 0 ? (
+            <>
+              {paginatedCategories.map((item: Category, index: number) => {
+                const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index + 1;
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm hover:shadow-md transition"
+                  >
+                    <div className="grid grid-cols-3 gap-3 items-center">
+                      {/* Category Name */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-500 flex-shrink-0">{globalIndex}.</span>
+                        <p className="font-bold text-sm text-gray-800 truncate">{item.name}</p>
+                      </div>
 
-                  {/* Edit Action */}
-                  <div className="flex justify-center">
-                    <button
-                      onClick={() => navigate(`/admin/kategori-produk/edit/${item.id}`)}
-                      className="p-2 text-gray-700 hover:text-blue-600 transition hover:scale-110"
-                    >
-                      <EditOutlined className="text-lg" />
-                    </button>
-                  </div>
+                      {/* Edit Action */}
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => navigate(`/admin/kategori-produk/edit/${item.id}`)}
+                          className="p-2 text-gray-700 hover:text-blue-600 transition hover:scale-110"
+                        >
+                          <EditOutlined className="text-lg" />
+                        </button>
+                      </div>
 
-                  {/* Delete Action */}
-                  <div className="flex justify-center">
-                    <button
-                      onClick={() => handleDeleteClick(item.id)}
-                      className="p-2 text-gray-700 hover:text-red-500 transition hover:scale-110"
-                    >
-                      <DeleteOutlined className="text-lg" />
-                    </button>
+                      {/* Delete Action */}
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => handleDeleteClick(item.id)}
+                          className="p-2 text-gray-700 hover:text-red-500 transition hover:scale-110"
+                        >
+                          <DeleteOutlined className="text-lg" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
+                );
+              })}
+
+              {/* Mobile Pagination Controls */}
+              {filteredCategories.length > ITEMS_PER_PAGE && (
+                <div className="flex justify-center gap-2 pt-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 bg-white rounded border border-gray-200 text-xs font-bold disabled:opacity-50"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-xs font-bold text-gray-500 flex items-center">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 bg-white rounded border border-gray-200 text-xs font-bold disabled:opacity-50"
+                  >
+                    Next
+                  </button>
                 </div>
-              </div>
-            ))
+              )}
+            </>
           ) : (
             <div className="p-10 text-center text-gray-400 font-medium bg-white rounded-xl border border-gray-200">
-              Data kategori "{search || filterType}" tidak ditemukan
+              {debouncedSearch ? `Data kategori "${debouncedSearch}" tidak ditemukan` : "Belum ada kategori"}
             </div>
           )}
         </div>

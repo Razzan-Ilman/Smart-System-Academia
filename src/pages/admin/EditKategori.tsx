@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { categoryService } from "../../services/adminService";
-import type { Category as APICategory } from "../../services/adminService";
+
+
 
 interface Category {
     id: number;
     name: string;
+    description?: string;
 }
 
 export default function AdminEditKategori() {
@@ -25,7 +27,7 @@ export default function AdminEditKategori() {
         const fetchCategory = async () => {
             try {
                 setLoading(true);
-                const category: APICategory = await categoryService.getById(parseInt(id));
+                const category: Category = await categoryService.getById(parseInt(id));
                 setName(category.name);
                 setLoading(false);
             } catch (error) {
@@ -94,9 +96,10 @@ export default function AdminEditKategori() {
                 {/* Submit Button */}
                 <button
                     onClick={handleSave}
-                    className="w-full py-4 bg-[#9df382] hover:bg-[#8ae26f] text-white font-bold text-2xl rounded-full shadow-lg transition-all active:scale-95 uppercase tracking-wider"
+                    disabled={saving}
+                    className={`w-full py-4 font-bold text-2xl rounded-full shadow-lg transition-all active:scale-95 uppercase tracking-wider text-white ${saving ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#9df382] hover:bg-[#8ae26f]'}`}
                 >
-                    SIMPAN PERUBAHAN
+                    {saving ? 'MENYIMPAN...' : 'SIMPAN PERUBAHAN'}
                 </button>
             </div>
         </div>

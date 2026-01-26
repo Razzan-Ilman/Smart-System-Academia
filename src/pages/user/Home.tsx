@@ -1,5 +1,5 @@
 import Navbar from '../../components/user/Navbar';
-import icon from '../../images/icon.png';
+import icon from '../../assets/images/icon.png';
 import Menu_produk from './Menu_produk';
 import Footer from '../../components/user/Footer';
 
@@ -24,12 +24,12 @@ const Home = () => {
         "
       >
         {/* IMAGE - Shows on mobile (top), hidden on desktop */}
-        <div className="block md:hidden relative mt-2">            
+        <div className="block md:hidden relative mt-2">
           {/* Phone mockup container */}
           <div className="relative w-64 h-[480px]">
             <div className="relative h-full transform hover:scale-105 transition-all duration-700 ease-out animate-float">
-              <img 
-                src={icon} 
+              <img
+                src={icon}
                 alt="SmartAcademy App"
                 className="w-full h-full object-contain drop-shadow-2xl"
                 style={{
@@ -38,7 +38,7 @@ const Home = () => {
               />
             </div>
           </div>
-          
+
           {/* Floating decorative elements */}
           <div className="absolute -top-6 -left-6 w-24 h-24 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full blur-2xl opacity-50 animate-pulse"></div>
           <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full blur-2xl opacity-50 animate-bounce"></div>
@@ -65,12 +65,12 @@ const Home = () => {
           </div>
 
           {/* RIGHT IMAGE - Only for desktop */}
-          <div className="hidden md:block relative">            
+          <div className="hidden md:block relative">
             {/* Phone mockup container */}
             <div className="relative w-80 h-[600px]">
               <div className="relative h-full transform hover:scale-105 transition-all duration-700 ease-out animate-float">
-                <img 
-                  src={icon} 
+                <img
+                  src={icon}
                   alt="SmartAcademy App"
                   className="w-full h-full object-contain drop-shadow-2xl"
                   style={{
@@ -79,7 +79,7 @@ const Home = () => {
                 />
               </div>
             </div>
-            
+
             {/* Floating decorative elements */}
             <div className="absolute -top-6 -left-6 w-24 h-24 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full blur-2xl opacity-50 animate-pulse"></div>
             <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full blur-2xl opacity-50 animate-bounce"></div>

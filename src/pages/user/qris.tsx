@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import Navbar from '../../components/user/Navbar';
 import { QrCode, CheckCircle2, Clock, Copy, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { confirmTransaction } from '../../services/transactionService';
 
 const QRISPayment = () => {
   const navigate = useNavigate();
@@ -16,13 +18,51 @@ const QRISPayment = () => {
   const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes in seconds
   const [copied, setCopied] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
+  const [referenceNo, setReferenceNo] = useState('');
 
   // Get payment data
+  // Get payment data
   const totalAmount = stateData.amount || parseInt(searchParams.get('amount') || '425000');
-  const orderNumber = stateData.orderId || searchParams.get('orderId') || `ORD-${Date.now()}`;
+
+  // Display ID (UI) - prioritize string ID
+  const orderNumber = stateData.transactionData?.trx_id || stateData.orderId || searchParams.get('orderId') || `ORD-${Date.now()}`;
+
+
+
   const buyerEmail = stateData.email || searchParams.get('email') || '';
   const buyerName = stateData.name || searchParams.get('name') || '';
   const buyerPhone = stateData.phone || searchParams.get('phone') || '';
+
+  // Get QR code data from API response - check all possible field names
+  const transactionData = stateData.transactionData || {};
+
+  // Debug log to identify data structure
+  useEffect(() => {
+    if (transactionData && Object.keys(transactionData).length > 0) {
+      console.log('📦 QRIS Transaction Data:', transactionData);
+    }
+  }, [transactionData]);
+
+  const rawQrValue = transactionData.payment_trx ||
+    transactionData.qr_url ||
+    transactionData.qris_url ||
+    transactionData.QrUrl ||
+    transactionData.qr_code ||
+    transactionData.qrcode ||
+    transactionData.qr_image ||
+    transactionData.qr_string ||
+    transactionData.qris_string ||
+    transactionData.QrString ||
+    transactionData.qr_data ||
+    transactionData.qris_data || "";
+
+  // Logic to determine if it's an image URL or a QRIS data string
+  const isUrl = typeof rawQrValue === 'string' && (rawQrValue.startsWith('http') || rawQrValue.startsWith('data:image'));
+  const qrCodeUrl = isUrl ? rawQrValue : null;
+  const qrCodeString = !isUrl ? rawQrValue : null;
+
+  // QR Code data extraction
 
   // Countdown timer
   useEffect(() => {
@@ -87,16 +127,24 @@ const QRISPayment = () => {
     }
   };
 
-  // Check payment status
-  const checkPaymentStatus = () => {
+  // Check payment status from API - Updated to confirmation flow
+  const checkPaymentStatus = async () => {
+    if (isChecking) return;
+
+    setIsChecking(true);
     setPaymentStatus('checking');
 
-    // Simulate API call - replace with actual API
-    setTimeout(() => {
-      const isSuccess = true;
+    try {
+      // Use the confirmation service function instead of polling
+      // Backend expects PUT /transaksi/:id/confirm-payment with originalReferenceNo
+      const result = await confirmTransaction(orderNumber, referenceNo || 'MANUAL-CHECK');
 
-      if (isSuccess) {
+      // Backend response usually contains updated status
+      const status = result?.data?.status || result?.status;
+
+      if (status === 'PAID' || status === 'SUCCESS' || status === 'settlement') {
         setPaymentStatus('success');
+        toast.success('Pembayaran terkonfirmasi!');
         setTimeout(() => {
           navigate('/payment-success', {
             state: {
@@ -105,31 +153,37 @@ const QRISPayment = () => {
               email: buyerEmail,
               name: buyerName,
               phone: buyerPhone,
-              items: stateData.items || []
+              items: stateData.items || [],
+              transactionData: result.data || transactionData
             }
           });
         }, 2000);
       } else {
-        setPaymentStatus('failed');
-        setTimeout(() => {
-          navigate('/payment-failed', {
-            state: {
-              orderId: orderNumber,
-              amount: totalAmount,
-              email: buyerEmail,
-              name: buyerName,
-              phone: buyerPhone
-            }
-          });
-        }, 2000);
+        // Handle failure or still pending cases from the confirm response
+        const msg = status === 'PENDING' ? 'Pembayaran belum terdeteksi. Pastikan Anda sudah menekan tombol Bayar di aplikasi DANA.' : `Status saat ini: ${status || 'Pending'}`;
+        toast.info(msg);
+        setPaymentStatus('pending');
       }
-    }, 2000);
+    } catch (error: any) {
+      console.error('Error confirming payment:', error.response?.data || error.message);
+      const errorMsg = error.response?.data?.message || 'Gagal mengonfirmasi pembayaran. Pastikan Anda sudah membayar atau tunggu beberapa saat.';
+      toast.error(errorMsg);
+      setPaymentStatus('pending');
+    } finally {
+      setIsChecking(false);
+    }
   };
 
   const handleCancelPayment = () => {
     setShowCancelModal(false);
     navigate('/payment', { replace: true });
   };
+
+  // Automatic polling disabled because backend uses confirmation flow
+  // (Prevents 404 polling errors)
+  useEffect(() => {
+    // No automatic polling
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 relative overflow-hidden">
@@ -175,34 +229,35 @@ const QRISPayment = () => {
           <div className="p-8">
             <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-8 mb-6 flex justify-center">
               <div className="bg-white rounded-xl p-6 shadow-lg">
-                {/* QR Code SVG */}
+                {/* QR Code - Real from API */}
                 <div className="w-64 h-64 bg-white flex items-center justify-center border-4 border-gray-200 rounded-lg">
-                  <svg width="256" height="256" viewBox="0 0 256 256">
-                    <rect width="256" height="256" fill="white" />
-                    <g fill="black">
-                      {/* Top-left corner */}
-                      <rect x="20" y="20" width="60" height="60" />
-                      <rect x="30" y="30" width="40" height="40" fill="white" />
-                      <rect x="40" y="40" width="20" height="20" />
-
-                      {/* Top-right corner */}
-                      <rect x="176" y="20" width="60" height="60" />
-                      <rect x="186" y="30" width="40" height="40" fill="white" />
-                      <rect x="196" y="40" width="20" height="20" />
-
-                      {/* Bottom-left corner */}
-                      <rect x="20" y="176" width="60" height="60" />
-                      <rect x="30" y="186" width="40" height="40" fill="white" />
-                      <rect x="40" y="196" width="20" height="20" />
-
-                      {/* Random pattern for demo */}
-                      {Array.from({ length: 100 }).map((_, i) => {
-                        const x = 20 + (i % 10) * 20;
-                        const y = 100 + Math.floor(i / 10) * 10;
-                        return Math.random() > 0.5 ? <rect key={i} x={x} y={y} width="8" height="8" /> : null;
-                      })}
-                    </g>
-                  </svg>
+                  {qrCodeUrl ? (
+                    // Display QR from image URL
+                    <img
+                      src={qrCodeUrl}
+                      alt="QRIS Payment"
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        console.error('Failed to load QR image');
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : qrCodeString ? (
+                    // Generate QR from string
+                    <QRCodeSVG
+                      value={qrCodeString}
+                      size={256}
+                      level="H"
+                      includeMargin={false}
+                    />
+                  ) : (
+                    // Fallback: No QR available
+                    <div className="flex flex-col items-center justify-center text-center p-4">
+                      <QrCode className="w-16 h-16 text-gray-300 mb-2" />
+                      <p className="text-sm text-gray-500">QR Code tidak tersedia</p>
+                      <p className="text-xs text-gray-400 mt-1">Silakan hubungi customer service</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="text-center mt-4">
@@ -277,18 +332,35 @@ const QRISPayment = () => {
               </ol>
             </div>
 
+            {/* Reference Number Input (Required for Confirm Payment API) */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Nomor Referensi / Kode Bayar (Opsional):
+              </label>
+              <input
+                type="text"
+                value={referenceNo}
+                onChange={(e) => setReferenceNo(e.target.value)}
+                placeholder="Masukkan nomor referensi dari aplikasi DANA"
+                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 bg-gray-50 focus:border-purple-400 outline-none transition-all text-sm"
+              />
+              <p className="mt-2 text-[11px] text-gray-500 italic">
+                *Beberapa sistem memerlukan nomor referensi pembayaran untuk verifikasi manual.
+              </p>
+            </div>
+
             {/* Check Payment Button */}
             <button
               onClick={checkPaymentStatus}
-              disabled={paymentStatus === 'checking' || paymentStatus === 'success'}
-              className={`w-full py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 ${paymentStatus === 'checking'
+              disabled={isChecking || paymentStatus === 'success'}
+              className={`w-full py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 mb-4 ${isChecking
                 ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                 : paymentStatus === 'success'
                   ? 'bg-green-500 text-white'
                   : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-xl hover:shadow-2xl'
                 }`}
             >
-              {paymentStatus === 'checking' ? (
+              {isChecking ? (
                 <>
                   <RefreshCw className="w-5 h-5 animate-spin" />
                   Mengecek Pembayaran...
@@ -305,6 +377,29 @@ const QRISPayment = () => {
                 </>
               )}
             </button>
+
+            {/* Manual check encouraged because auto-check is disabled */}
+            {paymentStatus === 'pending' && !isChecking && (
+              <div className="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-100">
+                <p className="flex items-center justify-center gap-2 text-sm text-amber-700">
+                  <AlertCircle className="w-4 h-4" />
+                  Sistem menunggu konfirmasi dari DANA. Klik tombol di atas setelah transaksi selesai.
+                </p>
+              </div>
+            )}
+
+            {/* Support Link */}
+            <div className="text-center mb-6">
+              <p className="text-sm text-gray-500 mb-2">Punya kendala pembayaran?</p>
+              <a
+                href={`https://wa.me/6281234567890?text=Halo%2C%20saya%20punya%20kendala%20pembayaran%20dengan%20nomor%20pesanan%20${orderNumber}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-700 underline underline-offset-4"
+              >
+                Hubungi Customer Service kami via WhatsApp
+              </a>
+            </div>
 
             {/* Cancel Payment Button */}
             <button

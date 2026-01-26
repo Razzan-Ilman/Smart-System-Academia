@@ -23,17 +23,18 @@ interface AddOn {
 interface Category {
     id: number;
     name: string;
-    date: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 interface ProductPayload {
-  name: string;
-  description: string;
-  price: number;
-  link_product: string;
-  category_id: number;
-  stock?: number;
-  add_ons?: AddOn[];
+    name: string;
+    description: string;
+    price: number;
+    link_product: string;
+    category_id: number;
+    stock?: number;
+    add_ons?: AddOn[];
 }
 
 
@@ -72,7 +73,6 @@ export default function AdminTambahProduk() {
         try {
             setLoadingCategories(true);
             const data = await categoryService.getAll();
-            console.log('Categories loaded from API:', data);
             setCategories(data);
         } catch (error) {
             console.error('Failed to load categories:', error);
@@ -86,15 +86,15 @@ export default function AdminTambahProduk() {
     const getPlatformForCategory = (catId: number): string => {
         const category = categories.find(c => c.id === catId);
         if (!category) return "";
-        
+
         const catName = category.name.toLowerCase();
-        
+
         if (catName.includes("course") || catName.includes("kursus")) {
             return "Google Drive";
         } else if (catName.includes("kelas") || catName.includes("class")) {
             return "WhatsApp";
         }
-        
+
         return "";
     };
 
@@ -175,7 +175,7 @@ export default function AdminTambahProduk() {
         const numValue = parseInt(value);
         setCategoryId(numValue > 0 ? numValue : null);
         setPlatformError("");
-        
+
         if (linkProduct && numValue > 0) {
             validatePlatformLink(linkProduct, numValue);
         }
@@ -256,13 +256,13 @@ export default function AdminTambahProduk() {
         }
 
         // Construct payload
-const payload: ProductPayload = {
-  name: name.trim(),
-  description: description.trim() || "",
-  price: Number(price),
-  link_product: linkProduct.trim(),
-  category_id: Number(categoryId),
-};
+        const payload: ProductPayload = {
+            name: name.trim(),
+            description: description.trim() || "",
+            price: Number(price),
+            link_product: linkProduct.trim(),
+            category_id: Number(categoryId),
+        };
 
 
         // Add optional fields
@@ -278,41 +278,37 @@ const payload: ProductPayload = {
             }));
         }
 
-        console.log('=== FINAL PAYLOAD ===');
-        console.log(JSON.stringify(payload, null, 2));
+        try {
+            setSaving(true);
 
-try {
-  setSaving(true);
+            // 1️⃣ CREATE PRODUCT
+            const res = await productService.create(payload);
 
-  // 1️⃣ CREATE PRODUCT
-  const res = await productService.create(payload);
+            const productId =
+                res.data?.data?.id ||
+                res.data?.id;
 
-  const productId =
-    res.data?.data?.id ||
-    res.data?.id;
+            if (!productId) {
+                throw new Error("Product ID tidak ditemukan");
+            }
 
-  if (!productId) {
-    throw new Error("Product ID tidak ditemukan");
-  }
+            // 2️⃣ UPLOAD IMAGES (JIKA ADA)
+            if (images.length > 0) {
+                await imageProductService.upload(productId, images);
+            }
 
-  // 2️⃣ UPLOAD IMAGES (JIKA ADA)
-  if (images.length > 0) {
-    await imageProductService.upload(productId, images);
-  }
+            toast.success("Produk berhasil ditambahkan");
+            navigate("/admin/produk");
 
-  toast.success("Produk berhasil ditambahkan");
-  navigate("/admin/produk");
-
-} catch (error: any) {
-  console.error(error);
-  toast.error("Gagal menambahkan produk");
-} finally {
-  setSaving(false);
-}
+        } catch (error: any) {
+            console.error(error);
+            toast.error("Gagal menambahkan produk");
+        } finally {
+            setSaving(false);
+        }
 
     };
 
-    const selectedCategory = categories.find(c => c.id === categoryId);
     const selectedPlatform = categoryId ? getPlatformForCategory(categoryId) : "";
 
     return (

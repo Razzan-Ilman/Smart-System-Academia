@@ -1,7 +1,4 @@
-import { useEffect, useState } from "react";
 import ProductCard from "./ProductCard";
-import { productService } from "../../services/productService";
-import type { ProductWithCategory } from "../../services/productService";
 
 // Membagi array menjadi beberapa chunk (untuk slider mobile)
 const chunkArray = <T,>(array: T[], size: number): T[][] => {
@@ -12,32 +9,19 @@ const chunkArray = <T,>(array: T[], size: number): T[][] => {
   return result;
 };
 
-const ProductGrid = () => {
-  const [products, setProducts] = useState<ProductWithCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+interface ProductGridProps {
+  products: {
+    id: string;
+    title: string;
+    category: string;
+    price: string;
+    image?: string;
+  }[];
+}
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      try {
-        const data = await productService.getAllWithCategory();
-        setProducts(data);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
+const ProductGrid = ({ products }: ProductGridProps) => {
 
   const slides = chunkArray(products, 4);
-
-  if (loading) {
-    return <p className="text-center text-gray-500">Memuat produk...</p>;
-  }
 
   if (!products.length) {
     return <p className="text-center text-gray-500">Produk tidak ditemukan</p>;
@@ -50,10 +34,10 @@ const ProductGrid = () => {
         {products.map((product) => (
           <ProductCard
             key={product.id}
-            id={product.id!}
-            title={product.name}
-            category={product.category_name}
-            price={`IDR ${product.price.toLocaleString("id-ID")}`}
+            id={product.id}
+            title={product.title}
+            category={product.category}
+            price={product.price}
             image={product.image}
           />
         ))}
@@ -68,10 +52,10 @@ const ProductGrid = () => {
                 {slide.map((product) => (
                   <ProductCard
                     key={product.id}
-                    id={product.id!}
-                    title={product.name}
-                    category={product.category_name}
-                    price={`IDR ${product.price.toLocaleString("id-ID")}`}
+                    id={product.id}
+                    title={product.title}
+                    category={product.category}
+                    price={product.price}
                     image={product.image}
                   />
                 ))}

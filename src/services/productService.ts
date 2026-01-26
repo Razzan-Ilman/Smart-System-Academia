@@ -1,5 +1,5 @@
 import axiosInstance from "./axiosInstance";
-import categoryService from "./categoryService";
+
 
 /* =======================
    TYPES
@@ -17,9 +17,10 @@ export interface Product {
   description: string;
   price: number;
   link_product: string;
-  image?: string;
-  images: string[];
-  category_id: number;
+  image?: string; // API returns single image string (base64 or url)
+  images: string[]; // Keep for compatibility if we want to wrap it
+  category: string; // API returns category name directly
+  category_id?: number;
   stock?: number;
   add_ons?: AddOn[];
 }
@@ -43,6 +44,27 @@ export interface ProductPayload {
 ======================= */
 const normalizeArray = (value: any): any[] => (Array.isArray(value) ? value : []);
 
+const mapToProduct = (item: any): Product => ({
+  id: String(item.id),
+  name: item.name,
+  description: item.description || "",
+  price: Number(item.price),
+  link_product: item.link_product || "",
+  image: item.image || (Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : undefined),
+  images: Array.isArray(item.images) && item.images.length > 0
+    ? item.images
+    : (item.image ? [item.image] : []),
+  category: item.category || "Uncategorized",
+  category_id: item.category_id ? Number(item.category_id) : undefined,
+  stock: item.stock,
+  add_ons: normalizeArray(item.add_ons).map((addon: any) => ({
+    id: String(addon.id),
+    name: addon.name,
+    price: Number(addon.price),
+    link_add_ons: addon.link_add_ons,
+  })),
+});
+
 /* =======================
    PRODUCT SERVICE
 ======================= */
@@ -54,23 +76,7 @@ class ProductService {
     const response = await axiosInstance.get(this.endpoint);
     const rawList = normalizeArray(response.data?.data ?? response.data);
 
-    return rawList.map((item: any) => ({
-      id: String(item.id),
-      name: item.name,
-      description: item.description,
-      price: Number(item.price),
-      link_product: item.link_product,
-      image: item.image,
-      images: normalizeArray(item.images),
-      category_id: Number(item.category_id), // pastikan number
-      stock: item.stock,
-      add_ons: normalizeArray(item.add_ons).map((addon: any) => ({
-        id: String(addon.id),
-        name: addon.name,
-        price: Number(addon.price),
-        link_add_ons: addon.link_add_ons,
-      })),
-    }));
+    return rawList.map(mapToProduct);
   }
 
   // Ambil produk by ID
@@ -78,39 +84,17 @@ class ProductService {
     const response = await axiosInstance.get(`${this.endpoint}/${id}`);
     const item = response.data?.data ?? response.data;
 
-    return {
-      id: String(item.id),
-      name: item.name,
-      description: item.description,
-      price: Number(item.price),
-      link_product: item.link_product,
-      image: item.image,
-      images: normalizeArray(item.images),
-      category_id: Number(item.category_id),
-      stock: item.stock,
-      add_ons: normalizeArray(item.add_ons).map((addon: any) => ({
-        id: String(addon.id),
-        name: addon.name,
-        price: Number(addon.price),
-        link_add_ons: addon.link_add_ons,
-      })),
-    };
+    return mapToProduct(item);
   }
 
   // Ambil semua produk dengan nama kategori
   async getAllWithCategory(): Promise<ProductWithCategory[]> {
     const products = await this.getAll();
-    const categories = await categoryService.getAll();
 
-    // Map kategori: key = number, value = name
-    const categoryMap: Record<number, string> = Object.fromEntries(
-      categories.map(c => [c.id, c.name])
-    );
 
     return products.map(p => ({
       ...p,
-      // Pastikan key number untuk lookup
-      category_name: categoryMap[Number(p.category_id)] ?? "Unknown",
+      category_name: p.category || "Unknown",
     }));
   }
 
@@ -131,30 +115,12 @@ class ProductService {
       Array.isArray(resData.data)
         ? resData.data
         : Array.isArray(resData.data?.data)
-        ? resData.data.data
-        : [];
+          ? resData.data.data
+          : [];
     const total = resData.total ?? resData.data?.total ?? list.length;
 
     return {
-      data: list.map((item: any) => ({
-        id: String(item.id),
-        name: item.name,
-        description: item.description,
-        price: Number(item.price),
-        link_product: item.link_product,
-        image: item.image,
-        images: Array.isArray(item.images) ? item.images : [],
-        category_id: Number(item.category_id),
-        stock: item.stock,
-        add_ons: Array.isArray(item.add_ons)
-          ? item.add_ons.map((a: any) => ({
-              id: String(a.id),
-              name: a.name,
-              price: Number(a.price),
-              link_add_ons: a.link_add_ons,
-            }))
-          : [],
-      })),
+      data: list.map(mapToProduct),
       total: Number(total),
       page,
       limit,

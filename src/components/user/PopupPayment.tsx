@@ -71,6 +71,17 @@ const PopupPayment: React.FC<Props> = ({
                         src={m.logo}
                         alt={m.name}
                         className="max-h-12 max-w-[90%] object-contain"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector('.fallback-logo')) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'fallback-logo w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center text-purple-600 font-bold text-lg';
+                            fallback.textContent = m.name.substring(0, 3).toUpperCase();
+                            parent.appendChild(fallback);
+                          }
+                        }}
                       />
                     </div>
                     <div className="w-full pt-3 border-t border-gray-100">
@@ -104,6 +115,17 @@ const PopupPayment: React.FC<Props> = ({
                         src={m.logo}
                         alt={m.name}
                         className="max-h-12 max-w-[90%] object-contain"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector('.fallback-logo')) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'fallback-logo w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center text-purple-600 font-bold text-lg';
+                            fallback.textContent = m.name.substring(0, 3).toUpperCase();
+                            parent.appendChild(fallback);
+                          }
+                        }}
                       />
                     </div>
                     <div className="w-full pt-3 border-t border-gray-100">
@@ -137,6 +159,17 @@ const PopupPayment: React.FC<Props> = ({
                         src={m.logo}
                         alt={m.name}
                         className="max-h-12 max-w-[90%] object-contain"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector('.fallback-logo')) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'fallback-logo w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center text-purple-600 font-bold text-lg';
+                            fallback.textContent = m.name.substring(0, 3).toUpperCase();
+                            parent.appendChild(fallback);
+                          }
+                        }}
                       />
                     </div>
                     <div className="w-full pt-3 border-t border-gray-100">

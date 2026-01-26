@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Copy, Check, Clock, Building2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Copy, Check, Clock, Building2, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import Navbar from '../../components/user/Navbar';
+import { getTransactionByTrxId } from '../../services/transactionService';
+import { toast } from 'sonner';
 
 const VirtualAccount = () => {
   const location = useLocation();
@@ -10,21 +12,33 @@ const VirtualAccount = () => {
   const [timeLeft, setTimeLeft] = useState(24 * 60 * 60); // 24 hours in seconds
   const [isChecking, setIsChecking] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState('pending');
 
   // Data dari payment page
-  const { amount, email, name, phone, orderId, paymentMethod } = location.state || {};
+  const { amount, email, name, phone, orderId, paymentMethod, transactionData } = location.state || {};
 
-  // Generate stable Virtual Account Number based on orderId
+  // Get real VA Number from API response
   const vaNumber = useMemo(() => {
+    // Check all possible fields for VA number
+    if (transactionData) {
+      const realVA =
+        transactionData.virtual_account ||
+        transactionData.va_number ||
+        transactionData.payment_code ||
+        transactionData.bill_key || // Mandiri Bill Key
+        transactionData.payment_data;
+
+      if (realVA) return realVA;
+    }
+
+    // Fallback if no real VA found (shouldn't happen in prod if API is correct)
     if (!orderId) {
       return `8808${Math.floor(Math.random() * 10000000000000).toString().padStart(13, '0')}`;
     }
-    // Extract timestamp from orderId (format: ORD-timestamp)
     const timestamp = orderId.split('-')[1] || Date.now().toString();
-    // Use last 13 digits of timestamp, pad if needed
     const vaDigits = timestamp.slice(-13).padStart(13, '0');
     return `8808${vaDigits}`;
-  }, [orderId]);
+  }, [orderId, transactionData]);
 
   // Bank info berdasarkan payment method
   const bankInfo = {
@@ -47,6 +61,21 @@ const VirtualAccount = () => {
   const currentBank = bankInfo[paymentMethod as keyof typeof bankInfo] || bankInfo.default;
 
   useEffect(() => {
+    // Calculate initial time left based on API expiry or default to 24h
+    let initialSeconds = 24 * 60 * 60;
+
+    if (transactionData) {
+      const expiryString = transactionData.expiry_time || transactionData.expired_at || transactionData.expiry_date;
+      if (expiryString) {
+        const expiryDate = new Date(expiryString).getTime();
+        const now = new Date().getTime();
+        const diff = Math.floor((expiryDate - now) / 1000);
+        if (diff > 0) initialSeconds = diff;
+      }
+    }
+
+    setTimeLeft(initialSeconds);
+
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 0) {
@@ -58,8 +87,9 @@ const VirtualAccount = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [transactionData]);
 
+  // Format helper
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -77,43 +107,85 @@ const VirtualAccount = () => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
+    toast.success('Disalin ke clipboard!');
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleCheckPayment = () => {
+  // ================= STATUS CHECK LOGIN =================
+  const checkPaymentStatus = async () => {
+    if (isChecking) return;
+
     setIsChecking(true);
+    setPaymentStatus('checking');
 
-    // Simulasi pengecekan pembayaran (3 detik)
-    setTimeout(() => {
-      setIsChecking(false);
+    try {
+      const result = await getTransactionByTrxId(orderId);
 
-      // Random success/failed untuk demo (50/50)
-      const isSuccess = Math.random() > 0.5;
+      const status = result?.data?.payment_status || result?.data?.status || result?.payment_status || result?.status;
 
-      if (isSuccess) {
-        navigate('/payment-success', {
-          state: {
-            orderId,
-            amount,
-            paymentMethod: currentBank.name,
-            vaNumber,
-            name,
-            email,
-            items: location.state?.items || []
-          }
-        });
+      if (status === 'PAID' || status === 'SUCCESS' || status === 'settlement') {
+        setPaymentStatus('success');
+        toast.success('Pembayaran berhasil!');
+        setTimeout(() => {
+          navigate('/payment-success', {
+            state: {
+              orderId,
+              amount,
+              paymentMethod: currentBank.name,
+              vaNumber,
+              name,
+              email,
+              items: location.state?.items || []
+            }
+          });
+        }, 2000);
+      } else if (status === 'FAILED' || status === 'EXPIRED' || status === 'cancel') {
+        setPaymentStatus('failed');
+        toast.error('Pembayaran gagal atau kadaluarsa');
+        setTimeout(() => {
+          navigate('/payment-failed', {
+            state: {
+              orderId,
+              amount,
+              paymentMethod: currentBank.name,
+              reason: 'Pembayaran gagal atau expired'
+            }
+          });
+        }, 2000);
       } else {
-        navigate('/payment-failed', {
-          state: {
-            orderId,
-            amount,
-            paymentMethod: currentBank.name,
-            reason: 'Pembayaran belum diterima. Silakan coba lagi.'
-          }
-        });
+        setPaymentStatus('pending');
+        // Only toast if manually clicking check button
+        if (document.activeElement?.id === 'btn-check-status') {
+          toast.info('Pembayaran belum diterima, silakan coba lagi sesaat lagi.');
+        }
       }
-    }, 3000);
+    } catch (error) {
+      console.error('Check status error:', error);
+      setPaymentStatus('pending');
+      // Show error message for network/API failures
+      toast.error('Gagal memeriksa status. Akan dicoba lagi otomatis.');
+    } finally {
+      setIsChecking(false);
+    }
   };
+
+  // Auto-poll every 5 seconds
+  useEffect(() => {
+    if (paymentStatus !== 'pending') return;
+
+    // Initial delay to avoid instant check
+    const timeout = setTimeout(() => {
+      const interval = setInterval(() => {
+        checkPaymentStatus();
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }, 3000);
+
+    return () => clearTimeout(timeout);
+  }, [paymentStatus, orderId]);
+
+
 
   const handleCancelPayment = () => {
     setShowCancelModal(false);
@@ -130,6 +202,34 @@ const VirtualAccount = () => {
 
       {/* Main Content */}
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
+        {/* Status Badge */}
+        <div className="mb-4 flex justify-center">
+          {paymentStatus === 'pending' && (
+            <div className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-100 border-2 border-yellow-400 text-yellow-800 rounded-full font-bold shadow-lg">
+              <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+              🟡 MENUNGGU PEMBAYARAN
+            </div>
+          )}
+          {paymentStatus === 'success' && (
+            <div className="inline-flex items-center gap-2 px-6 py-3 bg-green-100 border-2 border-green-400 text-green-800 rounded-full font-bold shadow-lg">
+              <CheckCircle2 className="w-5 h-5" />
+              🟢 PEMBAYARAN BERHASIL
+            </div>
+          )}
+          {paymentStatus === 'failed' && (
+            <div className="inline-flex items-center gap-2 px-6 py-3 bg-red-100 border-2 border-red-400 text-red-800 rounded-full font-bold shadow-lg">
+              <AlertCircle className="w-5 h-5" />
+              🔴 PEMBAYARAN KADALUARSA
+            </div>
+          )}
+          {paymentStatus === 'checking' && (
+            <div className="inline-flex items-center gap-2 px-6 py-3 bg-blue-100 border-2 border-blue-400 text-blue-800 rounded-full font-bold shadow-lg">
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              Memeriksa Status...
+            </div>
+          )}
+        </div>
+
         {/* Timer Warning */}
         <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl p-4 mb-6 shadow-lg">
           <div className="flex items-center justify-between">
@@ -223,7 +323,7 @@ const VirtualAccount = () => {
                   </div>
                   <div>
                     <p className="font-semibold text-gray-800">Selesai</p>
-                    <p className="text-sm text-gray-600">Pembayaran akan dikonfirmasi otomatis dalam 5-10 menit</p>
+                    <p className="text-sm text-gray-600">Pembayaran akan dikonfirmasi secara otomatis setelah bank memproses transaksi</p>
                   </div>
                 </div>
               </div>
@@ -255,39 +355,41 @@ const VirtualAccount = () => {
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="text-gray-600 text-sm">Metode Pembayaran</span>
-                  <span className="font-semibold text-gray-800 text-sm">{currentBank.name}</span>
+                  <span className="font-semibold text-gray-800 text-sm">Virtual Account – {currentBank.name}</span>
                 </div>
               </div>
             </div>
 
-            {/* Check Payment Button */}
-            <button
-              onClick={handleCheckPayment}
-              disabled={isChecking}
-              className={`w-full py-5 rounded-2xl font-bold text-lg shadow-xl transition-all transform hover:scale-[1.02] flex items-center justify-center gap-3 ${isChecking
-                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-2xl'
-                }`}
-            >
-              {isChecking ? (
-                <>
-                  <RefreshCw className="w-6 h-6 animate-spin" />
-                  Memeriksa Pembayaran...
-                </>
-              ) : (
-                <>
-                  <Check className="w-6 h-6" />
-                  Cek Status Pembayaran
-                </>
+            {/* Auto Check Status Info */}
+            <div className="bg-purple-50 border-2 border-purple-200 rounded-2xl p-6 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <RefreshCw className={`w-5 h-5 text-purple-600 ${paymentStatus === 'pending' ? 'animate-spin' : ''}`} />
+                <p className="font-semibold text-purple-900">Status Pembayaran</p>
+              </div>
+              {paymentStatus === 'pending' && (
+                <p className="text-sm text-purple-700">
+                  Status akan diperbarui otomatis setiap 5 detik
+                </p>
               )}
-            </button>
+              {paymentStatus === 'success' && (
+                <p className="text-sm text-green-700 font-semibold">
+                  ✓ Pembayaran Anda telah berhasil dikonfirmasi
+                </p>
+              )}
+              {paymentStatus === 'checking' && (
+                <p className="text-sm text-blue-700">
+                  Sedang memeriksa status pembayaran...
+                </p>
+              )}
+            </div>
 
             {/* Cancel Payment Button */}
             <button
               onClick={() => setShowCancelModal(true)}
-              className="w-full py-4 rounded-2xl font-semibold text-gray-600 bg-white border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-all"
+              disabled={paymentStatus === 'success' || paymentStatus === 'checking'}
+              className="w-full py-4 rounded-2xl font-semibold text-gray-600 bg-white border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-all disabled:opacity-50"
             >
-              Batalkan Pembayaran
+              Batalkan (selama belum dibayar)
             </button>
 
             {/* Important Notes */}
@@ -298,9 +400,10 @@ const VirtualAccount = () => {
                   <p className="font-semibold text-amber-900 text-sm mb-2">Penting!</p>
                   <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
                     <li>Transfer sesuai nominal yang tertera</li>
-                    <li>Jangan tambahkan kode unik</li>
-                    <li>Simpan bukti transfer hingga pesanan selesai</li>
-                    <li>Hubungi customer service jika ada kendala</li>
+                    <li>Sistem akan mendeteksi pembayaran secara otomatis (24 jam)</li>
+                    <li>Simpan bukti transfer sebagai cadangan</li>
+                    <li>Jika saldo terpotong tapi status tidak berubah hubungi CS</li>
+                    <li>Jika status belum berubah dalam 10 menit, silakan hubungi admin</li>
                   </ul>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MenuOutlined } from '@ant-design/icons';
 import { Drawer, Button } from 'antd';
-import logo from "../../images/logo.png";
+import logo from "../../assets/images/logo.png";
 
 const Navbar = () => {
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -65,7 +65,7 @@ const Navbar = () => {
         placement="right"
         onClose={closeDrawer}
         open={drawerVisible}
-        bodyStyle={{ padding: 0 }}
+        styles={{ body: { padding: 0 } }}
       >
         <ul className="flex flex-col p-4 gap-4 text-gray-800 font-semibold">
           {menuItems.map(item => (

@@ -7,8 +7,8 @@ export interface CreateTransactionPayload {
   email: string;
   phone_number: string;
   payment_type: string;
-  product_id: number;
-  add_ons_ids: number[];
+  product_id: string;
+  add_ons_ids: string[];
 }
 
 export const createTransaction = async (
@@ -26,3 +26,33 @@ export const createTransaction = async (
 
   return response.data;
 };
+
+export const getTransactionById = async (id: number | string) => {
+  const response = await axios.get(`${API_URL}/transaksi/${id}`, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  return response.data;
+};
+
+export const getTransactionByTrxId = async (trxId: string) => {
+  const response = await axios.get(`${API_URL}/transaksi/${trxId}`, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  return response.data;
+};
+
+export const confirmTransaction = async (id: string, originalReferenceNo: string) => {
+  const response = await axios.put(`${API_URL}/transaksi/${id}/confirm-payment`, {
+    originalReferenceNo: originalReferenceNo
+  }, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  return response.data;
+};
+

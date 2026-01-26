@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ShoppingOutlined,
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import ConfirmModal from "../../components/admin/ConfirmModal";
 import { productService } from "../../services/productService"; // pakai service baru
 import type { Product as APIProduct } from "../../services/productService";
+import { useDebounce } from "../../hooks/useDebounce";
 
 interface Product {
   id: string;
@@ -22,6 +23,8 @@ interface Product {
   date: string;
 }
 
+const ITEMS_PER_PAGE = 20;
+
 export default function AdminProduk() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,6 +32,10 @@ export default function AdminProduk() {
   const [search, setSearch] = useState("");
   const [showFilter, setShowFilter] = useState(false);
   const [sortType, setSortType] = useState<string>("Default");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Debounce search to reduce API calls
+  const debouncedSearch = useDebounce(search, 500);
 
   // Delete State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -97,18 +104,33 @@ export default function AdminProduk() {
     }
   };
 
-  // Filter & Sort
-  const filteredProducts = products
-    .filter((p) => p.title.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => {
-      if (sortType === "Harga Terendah") return a.priceValue - b.priceValue;
-      if (sortType === "Harga Tertinggi") return b.priceValue - a.priceValue;
-      if (sortType === "Terbaru")
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      if (sortType === "Terlama")
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-      return 0;
-    });
+  // Filter & Sort with memoization for performance
+  const filteredAndSortedProducts = useMemo(() => {
+    return products
+      .filter((p) => p.title.toLowerCase().includes(debouncedSearch.toLowerCase()))
+      .sort((a, b) => {
+        if (sortType === "Harga Terendah") return a.priceValue - b.priceValue;
+        if (sortType === "Harga Tertinggi") return b.priceValue - a.priceValue;
+        if (sortType === "Terbaru")
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (sortType === "Terlama")
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        return 0;
+      });
+  }, [products, debouncedSearch, sortType]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedProducts.length / ITEMS_PER_PAGE);
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredAndSortedProducts.slice(startIndex, endIndex);
+  }, [filteredAndSortedProducts, currentPage]);
+
+  // Reset to page 1 when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, sortType]);
 
   const sortOptions = [
     "Default",
@@ -145,11 +167,10 @@ export default function AdminProduk() {
             <div className="relative">
               <button
                 onClick={() => setShowFilter(!showFilter)}
-                className={`px-4 md:px-6 py-2 border border-gray-200 rounded-xl flex items-center gap-2 font-semibold transition shadow-sm text-sm md:text-base whitespace-nowrap ${
-                  sortType !== "Default"
-                    ? "bg-blue-50 text-blue-600 border-blue-200"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
+                className={`px-4 md:px-6 py-2 border border-gray-200 rounded-xl flex items-center gap-2 font-semibold transition shadow-sm text-sm md:text-base whitespace-nowrap ${sortType !== "Default"
+                  ? "bg-blue-50 text-blue-600 border-blue-200"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
               >
                 <FilterOutlined />{" "}
                 <span className="hidden sm:inline">
@@ -206,101 +227,157 @@ export default function AdminProduk() {
             <div className="col-span-1 text-center">Hapus</div>
           </div>
 
-          {filteredProducts.length > 0 ? (
-            filteredProducts.map((item, index) => (
-              <div
-                key={item.id}
-                className="grid grid-cols-12 items-center p-3 border-t border-gray-100 hover:bg-gray-50 transition"
-              >
-                <div className="col-span-1 pl-4 font-bold">{index + 1}</div>
-                <div className="col-span-2">
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-12 h-12 rounded-lg object-cover shadow-sm border border-gray-100"
-                    onError={(e) =>
+          {paginatedProducts.length > 0 ? (
+            paginatedProducts.map((item, index) => {
+              const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index + 1;
+              return (
+                <div
+                  key={item.id}
+                  className="grid grid-cols-12 items-center p-3 border-t border-gray-100 hover:bg-gray-50 transition"
+                >
+                  <div className="col-span-1 pl-4 font-bold">{globalIndex}</div>
+                  <div className="col-span-2">
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      loading="lazy"
+                      className="w-12 h-12 rounded-lg object-cover shadow-sm border border-gray-100"
+                      onError={(e) =>
                       (e.currentTarget.src =
                         "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop")
-                    }
-                  />
+                      }
+                    />
+                  </div>
+                  <div className="col-span-5 font-bold">{item.title}</div>
+                  <div className="col-span-2 font-bold">{item.price}</div>
+                  <div className="col-span-1 flex justify-center">
+                    <button
+                      onClick={() => navigate(`/admin/produk/edit/${item.id}`)}
+                      className="p-2 text-gray-700 hover:text-blue-600 transition hover:scale-110"
+                    >
+                      <EditOutlined className="text-2xl" />
+                    </button>
+                  </div>
+                  <div className="col-span-1 flex justify-center">
+                    <button
+                      onClick={() => handleDeleteClick(item.id)}
+                      className="p-2 text-gray-700 hover:text-red-500 transition hover:scale-110"
+                    >
+                      <DeleteOutlined className="text-2xl" />
+                    </button>
+                  </div>
                 </div>
-                <div className="col-span-5 font-bold">{item.title}</div>
-                <div className="col-span-2 font-bold">{item.price}</div>
-                <div className="col-span-1 flex justify-center">
-                  <button
-                    onClick={() => navigate(`/admin/produk/edit/${item.id}`)}
-                    className="p-2 text-gray-700 hover:text-blue-600 transition hover:scale-110"
-                  >
-                    <EditOutlined className="text-2xl" />
-                  </button>
-                </div>
-                <div className="col-span-1 flex justify-center">
-                  <button
-                    onClick={() => handleDeleteClick(item.id)}
-                    className="p-2 text-gray-700 hover:text-red-500 transition hover:scale-110"
-                  >
-                    <DeleteOutlined className="text-2xl" />
-                  </button>
-                </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="p-10 text-center text-gray-400 font-medium">
-              Data produk "{search}" tidak ditemukan
+              {debouncedSearch ? `Data produk "${debouncedSearch}" tidak ditemukan` : "Tidak ada produk"}
             </div>
           )}
         </div>
 
         {/* Mobile Card */}
         <div className="lg:hidden space-y-3">
-          {filteredProducts.length > 0 ? (
-            filteredProducts.map((item, index) => (
-              <div
-                key={item.id}
-                className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm hover:shadow-md transition"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-gray-500 flex-shrink-0">
-                    {index + 1}.
-                  </span>
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-10 h-10 rounded-lg object-cover shadow-sm border border-gray-100 flex-shrink-0"
-                    onError={(e) =>
+          {paginatedProducts.length > 0 ? (
+            paginatedProducts.map((item, index) => {
+              const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index + 1;
+              return (
+                <div
+                  key={item.id}
+                  className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm hover:shadow-md transition"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-500 flex-shrink-0">
+                      {globalIndex}.
+                    </span>
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      loading="lazy"
+                      className="w-10 h-10 rounded-lg object-cover shadow-sm border border-gray-100 flex-shrink-0"
+                      onError={(e) =>
                       (e.currentTarget.src =
                         "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop")
-                    }
-                  />
-                  <div className="min-w-0">
-                    <p className="font-bold text-sm text-gray-800 truncate">
-                      {item.title}
-                    </p>
-                    <p className="text-sm text-gray-500">{item.price}</p>
+                      }
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm text-gray-800 truncate">
+                        {item.title}
+                      </p>
+                      <p className="text-sm text-gray-500">{item.price}</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 mt-2">
+                    <button
+                      onClick={() => navigate(`/admin/produk/edit/${item.id}`)}
+                      className="p-2 text-gray-700 hover:text-blue-600 transition hover:scale-110"
+                    >
+                      <EditOutlined className="text-lg" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(item.id)}
+                      className="p-2 text-gray-700 hover:text-red-500 transition hover:scale-110"
+                    >
+                      <DeleteOutlined className="text-lg" />
+                    </button>
                   </div>
                 </div>
-                <div className="flex justify-end gap-2 mt-2">
-                  <button
-                    onClick={() => navigate(`/admin/produk/edit/${item.id}`)}
-                    className="p-2 text-gray-700 hover:text-blue-600 transition hover:scale-110"
-                  >
-                    <EditOutlined className="text-lg" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteClick(item.id)}
-                    className="p-2 text-gray-700 hover:text-red-500 transition hover:scale-110"
-                  >
-                    <DeleteOutlined className="text-lg" />
-                  </button>
-                </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="p-10 text-center text-gray-400 font-medium bg-white rounded-xl border border-gray-200">
-              Data produk "{search}" tidak ditemukan
+              {debouncedSearch ? `Data produk "${debouncedSearch}" tidak ditemukan` : "Tidak ada produk"}
             </div>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {filteredAndSortedProducts.length > ITEMS_PER_PAGE && (
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-gray-600">
+              Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredAndSortedProducts.length)} dari {filteredAndSortedProducts.length} produk
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm"
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(page => {
+                    // Show first, last, current, and adjacent pages
+                    return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
+                  })
+                  .map((page, idx, arr) => (
+                    <div key={page} className="flex items-center gap-1">
+                      {idx > 0 && arr[idx - 1] !== page - 1 && (
+                        <span className="px-2 text-gray-400">...</span>
+                      )}
+                      <button
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-10 h-10 rounded-lg font-medium transition text-sm ${currentPage === page
+                            ? 'bg-blue-600 text-white'
+                            : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    </div>
+                  ))}
+              </div>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <ConfirmModal

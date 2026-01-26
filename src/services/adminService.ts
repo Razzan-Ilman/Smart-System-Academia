@@ -91,11 +91,6 @@ export const productService = {
             })) || []
         };
 
-        console.log('--- API REQUEST DEBUG ---');
-        console.log('Method: POST');
-        console.log('URL: /product');
-        console.log('Payload (PascalCase):', JSON.stringify(payload, null, 2));
-
         const response = await axiosInstance.post('/product', payload);
         return response.data;
     },

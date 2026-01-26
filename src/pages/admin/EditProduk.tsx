@@ -301,6 +301,7 @@ export default function AdminEditProduk() {
     };
 
     const selectedCategory = CATEGORIES.find(c => c.id === categoryId);
+    const selectedPlatform = selectedCategory ? selectedCategory.platform : "";
 
     if (loading) {
         return (
@@ -410,8 +411,8 @@ export default function AdminEditProduk() {
                                 onChange={(e) => handlePlatformLinkChange(e.target.value)}
                                 disabled={!categoryId}
                                 placeholder={
-                                    selectedCategory
-                                        ? `Link ${selectedCategory.platform}`
+                                    selectedPlatform
+                                        ? `Link ${selectedPlatform}`
                                         : "Pilih kategori terlebih dahulu"
                                 }
                                 className={`flex-1 px-4 py-3 bg-white rounded-full border shadow-sm outline-none focus:ring-2 ${!categoryId

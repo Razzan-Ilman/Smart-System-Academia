@@ -3,7 +3,7 @@ import axios from 'axios';
 // Create axios instance with base configuration
 const axiosInstance = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
-    timeout: 10000,
+    timeout: 30000,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -30,15 +30,6 @@ const processQueue = (error: any, token: string | null = null) => {
 // Request interceptor
 axiosInstance.interceptors.request.use(
     (config) => {
-        // Log request URL for debugging
-        console.log('--- AXIOS REQUEST ---');
-        console.log('Method:', config.method?.toUpperCase());
-        console.log('BaseURL:', config.baseURL);
-        console.log('URL:', config.url);
-        console.log('Full URL:', config.baseURL + (config.url?.startsWith('/') ? config.url : '/' + config.url));
-        console.log('Request Headers:', JSON.stringify(config.headers, null, 2));
-        console.log('Request Data:', JSON.stringify(config.data, null, 2));
-
         // Add auth token if exists
         const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
         if (token) {
@@ -87,7 +78,6 @@ axiosInstance.interceptors.response.use(
             }
 
             try {
-                console.log('🔄 Attempting to refresh token...');
 
                 // Call refresh token API
                 const response = await axiosInstance.put('/user/refresh-token', {
@@ -97,7 +87,6 @@ axiosInstance.interceptors.response.use(
                 const newAccessToken = response.data?.access_token || response.data?.data?.access_token;
 
                 if (newAccessToken) {
-                    console.log('✅ Token refreshed successfully');
 
                     // Store new access token
                     localStorage.setItem('admin_token', newAccessToken);
