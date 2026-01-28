@@ -9,13 +9,13 @@ const PaymentSuccess = () => {
   const [showAnimation, setShowAnimation] = useState(false);
 
   // Get data from payment previous page
-  const { amount, email, items } = location.state || {};
+  const { amount, email, items, productLink } = location.state || {};
 
   const totalAmount = amount || 380000;
   const buyerEmail = email || 'zaidan@gmail.com';
   const cartItems = items || [];
 
-  const downloadLink = `https://youtu.be/ks4uigFnG-U?si=Vmx2TKk_WZa8p_rx`;
+  const downloadLink = productLink || `https://youtu.be/ks4uigFnG-U?si=Vmx2TKk_WZa8p_rx`;
 
   useEffect(() => {
     setShowAnimation(true);
@@ -114,7 +114,7 @@ const PaymentSuccess = () => {
                     <p className="text-green-600 font-medium break-all text-sm">
                       {downloadLink}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">Add-On Link</p>
+                    <p className="text-xs text-gray-500 mt-1">Product Download Link</p>
                   </div>
                   <button
                     onClick={handleCopy}

@@ -223,7 +223,7 @@ export default function AdminProduk() {
           <div className="grid grid-cols-12 bg-[#c9d4fb] font-bold p-3 text-gray-800">
             <div className="col-span-1 pl-4">No</div>
             <div className="col-span-2">Gambar</div>
-            <div className="col-span-5">Judul Produk</div>
+            <div className="col-span-4">Judul Produk</div>
             <div className="col-span-2">Harga</div>
             <div className="col-span-1">Stok</div>
             <div className="col-span-1 text-center">Edit</div>
@@ -251,7 +251,7 @@ export default function AdminProduk() {
                       }
                     />
                   </div>
-                  <div className="col-span-5 font-bold">{item.title}</div>
+                  <div className="col-span-4 font-bold">{item.title}</div>
                   <div className="col-span-2 font-bold">{item.price}</div>
                   <div className="col-span-1 font-medium">{item.stock}</div>
                   <div className="col-span-1 flex justify-center">
@@ -363,8 +363,8 @@ export default function AdminProduk() {
                       <button
                         onClick={() => setCurrentPage(page)}
                         className={`w-10 h-10 rounded-lg font-medium transition text-sm ${currentPage === page
-                            ? 'bg-blue-600 text-white'
-                            : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
                           }`}
                       >
                         {page}

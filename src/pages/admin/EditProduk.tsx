@@ -8,8 +8,11 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import RichTextEditor from "../../components/RichTextEditor";
-import { productService, addOnService, categoryService } from "../../services/adminService";
-import type { Product as APIProduct } from "../../services/adminService";
+import axiosInstance from "../../services/axiosInstance";
+import { productService } from "../../services/productService";
+import { addOnService } from "../../services/addOnService";
+import { categoryService } from "../../services/categoryService";
+import type { Product as APIProduct } from "../../services/productService";
 import '../../styles/rich-text-editor.css';
 
 // =========================
@@ -99,11 +102,56 @@ export default function AdminEditProduk() {
                     return;
                 }
 
+                // If link is missing in detail, try to fetch from list (Fallback)
+                let finalLink = product.link_product;
+
+                if (!finalLink) {
+                    try {
+                        const listRes = await axiosInstance.get('/product');
+                        const listData = listRes.data?.data || listRes.data;
+                        const itemFromList = Array.isArray(listData) ? listData.find((p: any) => (p.id == id || p.Id == id)) : null;
+
+                        if (itemFromList) {
+                            const linkInList = itemFromList.link_product || itemFromList.LinkProduct || itemFromList.link || itemFromList.url || itemFromList.redirect_url;
+                            if (linkInList) {
+                                finalLink = linkInList;
+                            }
+                        }
+                    } catch (e) {
+                        // Silent fail for fallback
+                        console.error("Fallback fetch failed", e);
+                    }
+                }
+
+                // DEBUGGING: Show keys to user so they can report back
+                console.log("Product Data:", product);
+                const keys = Object.keys(product).filter(k => k.toLowerCase().includes('link') || k.toLowerCase().includes('url'));
+                if (keys.length > 0) {
+                    toast.info(`Link keys found: ${keys.join(", ")}`);
+                } else {
+                    toast.error("DEBUG: No 'link' or 'url' fields found in API response. Check console for full object keys.");
+                    toast.info(`All Keys: ${Object.keys(product).join(", ")}`);
+                }
+
                 setName(product.name);
                 setPrice(Number(product.price ?? 0));
                 setDescription(product.description ?? "");
-                setLinkProduct(product.link_product ?? "");
-                setCategoryId(product.category_id ?? 0);
+
+                // Handle various backend field casings
+                setLinkProduct(
+                    product.link_product ||
+                    (product as any).linkProduct ||
+                    (product as any).LinkProduct ||
+                    ""
+                );
+
+                setCategoryId(
+                    product.category_id ||
+                    (product as any).categoryId ||
+                    (product as any).CategoryId ||
+                    0
+                );
+
                 setStock(Number(product.stock ?? 0));
                 // Normalize add-ons (ensure price is a number)
                 const normalizedAddOns = (product.add_ons || []).map(a => ({

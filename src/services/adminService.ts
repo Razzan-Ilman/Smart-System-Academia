@@ -336,10 +336,11 @@ export const authService = {
     // Get user profile from API
     getUserProfile: async () => {
         try {
+            // Try fetching from API
             const response = await axiosInstance.get('/user/profile');
             const user = response.data.data || response.data;
 
-            // Update localStorage with fresh data
+            // If successful, update local storage
             const userData = {
                 name: user.name || user.Name || user.username || user.Username,
                 email: user.email || user.Email,
@@ -349,10 +350,13 @@ export const authService = {
             localStorage.setItem('user_data', JSON.stringify(userData));
 
             return userData;
-        } catch (error) {
-            console.error('Failed to fetch user profile:', error);
-            // Return cached data if API fails
-            return authService.getUserData();
+        } catch (error: any) {
+            // Explicitly handle 404/405 as "Not Implemented" and fallback to local
+            if (error.response && (error.response.status === 404 || error.response.status === 405)) {
+                return authService.getUserData() || {};
+            }
+            // Re-throw other errors (500, Network Error, etc) to be handled by caller/UI
+            throw error;
         }
     },
 

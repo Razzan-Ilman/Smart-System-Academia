@@ -1,88 +1,142 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   MenuOutlined,
   EditOutlined,
   SearchOutlined,
   UnorderedListOutlined,
   LoadingOutlined,
+  SyncOutlined,
 } from "@ant-design/icons";
-import { getTransactionHistory, type Transaction } from "../../services/transactionService";
+import { toast } from "sonner";
+import {
+  getTransactionHistory,
+  confirmTransaction,
+  type Transaction
+} from "../../services/transactionService";
+import { formatRupiah } from "../../utils/transactionUtils";
 
 const ITEMS_PER_PAGE = 15;
 
-// Helper function to normalize status
-const normalizeStatus = (status?: string) => {
+// Helper to format Status (Updated with Auto-Fail Logic)
+const normalizeStatus = (status?: string, createdAt?: string) => {
   if (!status) return "Pending";
-
   const s = status.toLowerCase();
+
   if (["success", "paid", "settlement"].includes(s)) return "Success";
-  if (["pending"].includes(s)) return "Pending";
   if (["failed", "expire", "cancel", "cancelled"].includes(s)) return "Failed";
 
-  return status;
+  if (s === "pending" && createdAt) {
+    const createdTime = new Date(createdAt).getTime();
+    const now = new Date().getTime();
+    const diffHours = (now - createdTime) / (1000 * 60 * 60);
+    if (diffHours > 24) return "Failed"; // Auto-fail after 24 hours
+  }
+
+  return "Pending";
 };
 
 export function ListTransaksi() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [showFilter, setShowFilter] = useState(false);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
+  const [showFilter, setShowFilter] = useState(false); // Original state
   const [filterStatus, setFilterStatus] = useState<string>("All");
   const [filterMethod, setFilterMethod] = useState<string>("All");
+
+  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // Original state, keeping it.
 
-  // ✅ FETCH DATA FROM BACKEND
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      setLoading(true);
-      setError(null);
+  const fetchTransactions = useCallback(async () => {
+    setLoading(true);
+    setError(null); // Reset error on new fetch
 
-      try {
-        const response = await getTransactionHistory(
-          currentPage,
-          ITEMS_PER_PAGE,
-          search,
-          filterMethod === "All" ? "" : filterMethod
-        );
+    try {
+      const response = await getTransactionHistory(
+        currentPage,
+        ITEMS_PER_PAGE,
+        search,
+        filterMethod === "All" ? "" : filterMethod,
+        filterStatus === "All" ? "" : filterStatus
+      );
 
-        setTransactions(response.data.transactions || []);
-        setTotalPages(response.data.pagination?.totalPages || 1);
-      } catch (err: any) {
-        console.error("❌ Error fetching transactions:", err);
-        setError(err.response?.data?.message || "Gagal memuat data transaksi");
-        setTransactions([]);
-      } finally {
-        setLoading(false);
+      // Robust data extraction
+      let txList: Transaction[] = [];
+      if (response?.data?.transactions && Array.isArray(response.data.transactions)) {
+        txList = response.data.transactions;
+      } else if (response?.data && Array.isArray(response.data)) {
+        txList = response.data;
+      } else if (Array.isArray(response)) {
+        txList = response as any;
       }
-    };
 
+      setTransactions(txList);
+      const respAny = response as any;
+      setTotalPages(response?.data?.pagination?.totalPages || respAny?.pagination?.totalPages || 1);
+    } catch (err: any) {
+      console.error("❌ Error fetching transactions:", err);
+      setError(err.response?.data?.message || "Gagal memuat data transaksi");
+      setTransactions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, search, filterMethod, filterStatus]);
+
+  useEffect(() => {
     fetchTransactions();
-  }, [currentPage, search, filterMethod]);
-
-  // Format date
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString("id-ID", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  // Client-side filter by status (jika backend tidak support filter status)
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter((transaction) => {
-      const normalizedStatus = normalizeStatus(transaction.status);
-      return filterStatus === "All" || normalizedStatus === filterStatus;
-    });
-  }, [transactions, filterStatus]);
+  }, [fetchTransactions]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [search, filterStatus, filterMethod]);
+
+
+
+  const handleCheckStatus = async (trxId: string) => {
+    if (!trxId) return;
+    setCheckingId(trxId);
+    try {
+      // Use confirmTransaction with 'ADMIN-SYNC' ref to force status check
+      const result = await confirmTransaction(trxId, "ADMIN-SYNC");
+      const status = result?.data?.status || result?.status;
+
+      if (['paid', 'success', 'settlement'].includes((status || '').toLowerCase())) {
+        toast.success(`Status updated: ${status}`);
+        fetchTransactions();
+      } else if (status) {
+        toast.info(`Status saat ini: ${status}`);
+        // Still refresh to show update if any
+        fetchTransactions();
+      } else {
+        toast.warning("Status tidak berubah / belum dibayar");
+      }
+    } catch (error: any) {
+      const errorData = error.response?.data;
+      if (errorData?.message === 'Trx already confirmed') {
+        toast.success("Transaksi sudah dikonfirmasi (Success)");
+        fetchTransactions();
+        return;
+      }
+
+      console.error("Check status failed:", error);
+      toast.error(errorData?.message || "Gagal mengecek status pembayaran");
+    } finally {
+      setCheckingId(null);
+    }
+  };
+
+  // Client-side filter removed in favor of server-side
+  const filteredTransactions = transactions;
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStatus, filterMethod]);
+
+
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -110,7 +164,7 @@ export function ListTransaksi() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari nama, email, atau ID..."
-                className="pl-6 pr-12 py-2 bg-gray-50 rounded-full w-full focus:outline-none focus:ring-2 focus:ring-purple-300"
+                className="pl-6 pr-12 py-2 bg-gray-50 rounded-full w-full focus:outline-none focus:ring-2 focus:ring-purple-300 transition shadow-sm"
               />
               <SearchOutlined className="absolute right-5 top-3 text-gray-400" />
             </div>
@@ -119,13 +173,13 @@ export function ListTransaksi() {
 
         {/* Filter Panel */}
         {showFilter && (
-          <div className="bg-gray-50 p-4 rounded-xl mb-4 grid grid-cols-2 gap-4">
+          <div className="bg-gray-50 p-4 rounded-xl mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 border border-gray-100">
             <div>
-              <label className="block text-sm font-semibold mb-2">Status</label>
+              <label className="block text-sm font-semibold mb-2 text-gray-700">Status</label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-200"
               >
                 <option value="All">Semua Status</option>
                 <option value="Success">Success</option>
@@ -135,11 +189,11 @@ export function ListTransaksi() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-2">Metode Pembayaran</label>
+              <label className="block text-sm font-semibold mb-2 text-gray-700">Metode Pembayaran</label>
               <select
                 value={filterMethod}
                 onChange={(e) => setFilterMethod(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-200"
               >
                 <option value="All">Semua Metode</option>
                 <option value="qris">QRIS</option>
@@ -157,93 +211,158 @@ export function ListTransaksi() {
           </div>
         )}
 
-        {/* Table */}
-        <div className="border border-gray-200 rounded-2xl overflow-hidden">
-          <div className="grid grid-cols-12 bg-gray-50 font-bold p-5 border-b">
-            <div className="col-span-1">NO</div>
-            <div className="col-span-2">TRX ID</div>
-            <div className="col-span-3">NAMA</div>
-            <div className="col-span-3">EMAIL</div>
-            <div className="col-span-2 text-center">STATUS</div>
-            <div className="col-span-1 text-center">AKSI</div>
+        {/* Table - Semantic HTML Table */}
+        <div className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px]">
+              <thead className="bg-[#f8fafc]">
+                <tr className="text-left text-gray-600 font-bold border-b border-gray-200">
+                  <th className="py-4 px-6 w-16 text-center">No</th>
+                  <th className="py-4 px-4 w-32">TRX ID</th>
+                  <th className="py-4 px-4">Nama Customer</th>
+                  <th className="py-4 px-4 text-right">Total Transaksi</th>
+                  <th className="py-4 px-4 text-center">Status</th>
+                  <th className="py-4 px-4 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="p-16 text-center">
+                      <LoadingOutlined className="text-4xl animate-spin text-purple-500" />
+                      <p className="mt-4 text-gray-500 font-medium">Memuat data transaksi...</p>
+                    </td>
+                  </tr>
+                ) : filteredTransactions.length > 0 ? (
+                  filteredTransactions.map((trx, index) => {
+                    const statusNormalized = normalizeStatus(trx.status, trx.created_at);
+                    const statusColor =
+                      statusNormalized === "Success"
+                        ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                        : statusNormalized === "Pending"
+                          ? "bg-amber-100 text-amber-700 border border-amber-200"
+                          : "bg-rose-100 text-rose-700 border border-rose-200";
+
+                    return (
+                      <tr key={trx.id} className="hover:bg-gray-50/80 transition-colors duration-200">
+                        <td className="py-4 px-6 text-center font-medium text-gray-500">
+                          {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded text-gray-700">
+                            {(trx.trx_id || String(trx.id || "")).slice(-8).toUpperCase() || "-"}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="font-medium text-gray-800">{trx.name}</div>
+                          <div className="text-xs text-gray-500 truncate max-w-[150px]">{trx.email}</div>
+                        </td>
+                        <td className="py-4 px-4 text-right font-semibold text-gray-700">
+                          {formatRupiah(Number(
+                            trx.gross_amount ||
+                            (trx as any).GrossAmount ||
+                            (trx as any).total_price ||
+                            (trx as any).TotalPrice ||
+                            trx.price ||
+                            (trx as any).amount ||
+                            0
+                          ))}
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-bold inline-block min-w-[80px] ${statusColor}`}
+                          >
+                            {statusNormalized}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <div className="flex justify-center gap-2">
+                            {/* Sync Button (Only for Pending) */}
+                            {statusNormalized === "Pending" && (
+                              <button
+                                onClick={() => handleCheckStatus(trx.trx_id || String(trx.id))}
+                                disabled={checkingId === (trx.trx_id || String(trx.id))}
+                                className={`p-2 rounded-full transition ${checkingId === (trx.trx_id || String(trx.id)) ? "bg-gray-100 text-gray-400" : "text-green-500 hover:bg-green-50 hover:text-green-600"}`}
+                                title="Cek Status Pembayaran (Sync)"
+                              >
+                                {checkingId === (trx.trx_id || String(trx.id)) ? <LoadingOutlined /> : <SyncOutlined />}
+                              </button>
+                            )}
+
+                            <button className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-full transition">
+                              <EditOutlined />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="p-16 text-center text-gray-400 font-medium">
+                      {search || filterStatus !== "All" || filterMethod !== "All"
+                        ? "Tidak ada transaksi yang sesuai dengan filter"
+                        : "Belum ada data transaksi"}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Pagination Details */}
+        <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4">
+          <div className="text-sm text-gray-500">
+            Menampilkan {filteredTransactions.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} - {Math.min(currentPage * ITEMS_PER_PAGE, (currentPage - 1) * ITEMS_PER_PAGE + filteredTransactions.length)} dari Total Transaksi
           </div>
 
-          {loading ? (
-            <div className="p-16 text-center">
-              <LoadingOutlined className="text-4xl animate-spin text-purple-500" />
-              <p className="mt-4 text-gray-500">Memuat data transaksi...</p>
-            </div>
-          ) : filteredTransactions.length > 0 ? (
-            filteredTransactions.map((trx, index) => {
-              const statusNormalized = normalizeStatus(trx.status);
-              const statusColor =
-                statusNormalized === "Success"
-                  ? "bg-green-100 text-green-700"
-                  : statusNormalized === "Pending"
-                  ? "bg-yellow-100 text-yellow-700"
-                  : "bg-red-100 text-red-700";
+          {totalPages > 1 && (
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 md:px-4 md:py-2 border border-blue-200 rounded-lg text-sm font-medium text-blue-600 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed hover:bg-blue-50 transition"
+              >
+                Sebelumnya
+              </button>
 
-              return (
-                <div
-                  key={trx.id}
-                  className="grid grid-cols-12 p-5 border-b hover:bg-gray-50"
-                >
-                  <div className="col-span-1 font-bold">
-                    {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}
-                  </div>
-                  <div className="col-span-2 font-mono text-blue-600">
-                    {trx.trx_id || String(trx.id).slice(0, 8)}
-                  </div>
-                  <div className="col-span-3">{trx.name}</div>
-                  <div className="col-span-3 text-sm text-gray-600">{trx.email}</div>
-                  <div className="col-span-2 text-center">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}
+              {/* Page Numbers */}
+              <div className="hidden md:flex gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum = i + 1;
+                  // Simple sliding window logic or just limit to first 5 for now to prevent overflow
+                  if (totalPages > 5 && currentPage > 3) {
+                    pageNum = currentPage - 2 + i;
+                    if (pageNum > totalPages) return null;
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg text-sm font-medium transition
+                        ${currentPage === pageNum
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "text-gray-600 hover:bg-gray-100 border border-gray-200"
+                        }`}
                     >
-                      {statusNormalized}
-                    </span>
-                  </div>
-                  <div className="col-span-1 text-center">
-                    <button className="text-blue-500 hover:text-blue-700">
-                      <EditOutlined />
+                      {pageNum}
                     </button>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="p-16 text-center text-gray-400">
-              {search || filterStatus !== "All" || filterMethod !== "All"
-                ? "Tidak ada transaksi yang sesuai dengan filter"
-                : "Belum ada data transaksi"}
+                  );
+                }).filter(Boolean)}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 md:px-4 md:py-2 border border-blue-200 rounded-lg text-sm font-medium text-blue-600 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed hover:bg-blue-50 transition"
+              >
+                Selanjutnya
+              </button>
             </div>
           )}
         </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-center gap-2 mt-6">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              ‹ Prev
-            </button>
-
-            <span className="px-4 py-2">
-              Halaman {currentPage} dari {totalPages}
-            </span>
-
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              Next ›
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

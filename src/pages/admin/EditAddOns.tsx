@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { addOnService, productService } from "../../services/adminService";
-import type { Product as APIProduct } from "../../services/adminService";
+import { addOnService } from "../../services/addOnService";
+import { productService } from "../../services/productService";
+import type { Product as APIProduct } from "../../services/productService";
 
 // TypeScript Interface - Sesuai Kontrak API Update Add-ons
 interface UpdateAddOnPayload {

@@ -244,7 +244,8 @@ const Payment = () => {
             phone: buyerInfo.phone,
             orderId: orderId,
             items: cartItems,
-            transactionData: result.data || result
+            transactionData: result.data || result,
+            productLink: stateData.productLink
           }
         });
         return;
@@ -267,7 +268,8 @@ const Payment = () => {
             orderId: orderId,
             paymentMethod: selectedPayment,
             items: cartItems,
-            transactionData: result.data || result
+            transactionData: result.data || result,
+            productLink: stateData.productLink
           }
         });
         return;
@@ -283,7 +285,8 @@ const Payment = () => {
             orderId: orderId,
             paymentMethod: selectedPayment,
             items: cartItems,
-            transactionData: result.data || result
+            transactionData: result.data || result,
+            productLink: stateData.productLink
           }
         });
         return;

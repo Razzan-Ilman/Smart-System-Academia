@@ -245,6 +245,7 @@ const DetailProduk = () => {
                           productCategory: product.category,
                           selectedAddOnsIds: selectedAddOns,
                           addOns: getSelectedAddOnsData(),
+                          productLink: product.link_product,
                         },
                       })
                     }
@@ -349,7 +350,7 @@ const DetailProduk = () => {
             <p className="text-lg font-black text-[#7C3AED]">{formatRupiah(totalPrice)}</p>
           </div>
           <button
-            onClick={() => navigate("/payment", { state: { productId: product.id, productName: product.name, basePrice, totalPrice, productImage: images[0], productCategory: product.category, selectedAddOnsIds: selectedAddOns, addOns: getSelectedAddOnsData() } })}
+            onClick={() => navigate("/payment", { state: { productId: product.id, productName: product.name, basePrice, totalPrice, productImage: images[0], productCategory: product.category, selectedAddOnsIds: selectedAddOns, addOns: getSelectedAddOnsData(), productLink: product.link_product } })}
             className="px-8 py-3 bg-[#7C3AED] text-white rounded-xl font-bold shadow-lg hover:bg-[#6D28D9] transition active:scale-95"
           >
             Beli Sekarang

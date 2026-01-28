@@ -122,23 +122,26 @@ axiosInstance.interceptors.response.use(
 
         // Handle other errors
         if (error.response) {
-            switch (error.response.status) {
-                case 403:
-                    console.error('Forbidden access');
-                    break;
-                case 404:
-                    console.error('Resource not found');
-                    break;
-                case 500:
-                    console.error('Server error');
-                    break;
-                default:
-                    console.error('An error occurred:', error.response.data);
+            // Clean logging only in Development
+            if (import.meta.env.DEV) {
+                switch (error.response.status) {
+                    case 403:
+                        console.error('Forbidden access');
+                        break;
+                    case 404:
+                        console.warn(`Resource not found: ${error.config?.url}`);
+                        break;
+                    case 500:
+                        console.error('Server error');
+                        break;
+                    default:
+                        console.error('An error occurred:', error.response.data);
+                }
             }
         } else if (error.request) {
-            console.error('No response received:', error.request);
+            if (import.meta.env.DEV) console.error('No response received:', error.request);
         } else {
-            console.error('Error setting up request:', error.message);
+            if (import.meta.env.DEV) console.error('Error setting up request:', error.message);
         }
 
         return Promise.reject(error);

@@ -1,7 +1,5 @@
-import axios from "axios";
+import axiosInstance from "./axiosInstance";
 
-// ✅ Arahkan ke backend proxy kamu
-const API_URL = "http://localhost:3001/api";
 
 /* =========================
    TYPES
@@ -27,6 +25,9 @@ export interface Transaction {
   status: string;
   created_at: string;
   updated_at: string;
+  gross_amount?: number;
+  price?: number;
+  [key: string]: any; // Allow indexing for safe access during debug
 }
 
 export interface TransactionHistoryResponse {
@@ -50,66 +51,126 @@ export interface TransactionHistoryResponse {
 export const transactionService = {
   /**
    * ✅ GET TRANSACTION HISTORY
-   * Endpoint: GET /api/transactions/history
+   * Endpoint: GET /transaksi
    */
   getHistory: async (
     page = 1,
     limit = 10,
     search = "",
-    paymentType = ""
+    paymentType = "",
+    status = ""
   ): Promise<TransactionHistoryResponse> => {
     try {
-      const response = await axios.get(`${API_URL}/transactions/history`, {
-        params: { page, limit, search, payment_type: paymentType },
+      const response = await axiosInstance.get('/transaksi/history', {
+        params: { page, limit, search, payment_type: paymentType, status },
       });
       return response.data;
     } catch (error: any) {
-      console.error("❌ Service Error - getHistory:", error.response?.data);
+      console.error("❌ Service Error - getHistory:", error.response?.data || error.message);
       throw error;
     }
   },
 
   /**
    * ✅ CREATE TRANSACTION
-   * Endpoint: POST /api/transactions
+   * Endpoint: POST /transaksi
    */
   create: async (payload: CreateTransactionPayload) => {
     try {
-      const response = await axios.post(`${API_URL}/transactions`, payload);
+      const response = await axiosInstance.post('/transaksi', payload);
       return response.data;
     } catch (error: any) {
-      console.error("❌ Service Error - create:", error.response?.data);
+      console.error("❌ Service Error - create:", error.response?.data || error.message);
       throw error;
     }
   },
 
   /**
    * ✅ CHECK PAYMENT STATUS
-   * Endpoint: GET /api/transactions/check/:trxId
+   * Endpoint: GET /transaksi/check/:trxId
    */
   checkPayment: async (trxId: string) => {
     try {
-      const response = await axios.get(`${API_URL}/transactions/check/${trxId}`);
+      const response = await axiosInstance.get(`/transaksi/check/${trxId}`);
       return response.data;
     } catch (error: any) {
-      console.error("❌ Service Error - checkPayment:", error.response?.data);
+      console.error("❌ Service Error - checkPayment:", error.response?.data || error.message);
       throw error;
     }
   },
 
   /**
    * ✅ CONFIRM PAYMENT (Admin only)
-   * Endpoint: PUT /api/transactions/:id/confirm
+   * Endpoint: PUT /transaksi/:id/confirm-payment
    */
   confirmPayment: async (id: string, originalReferenceNo: string) => {
     try {
-      const response = await axios.put(`${API_URL}/transactions/${id}/confirm`, {
+      const response = await axiosInstance.put(`/transaksi/${id}/confirm-payment`, {
         originalReferenceNo,
       });
       return response.data;
     } catch (error: any) {
-      console.error("❌ Service Error - confirmPayment:", error.response?.data);
+      console.error("❌ Service Error - confirmPayment:", error.response?.data || error.message);
       throw error;
+    }
+  },
+
+  /**
+   * ✅ DELETE TRANSACTION (Admin only)
+   * Endpoint: DELETE /transaksi/:id
+   */
+  delete: async (id: number | string) => {
+    try {
+      const response = await axiosInstance.delete(`/transaksi/${id}`);
+      return response.data;
+    } catch (error: any) {
+      console.error("❌ Service Error - delete:", error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * ✅ GET DASHBOARD STATS
+   * Aggregates data from /transaksi/history into category-based stats
+   */
+  getDashboardStats: async () => {
+    try {
+      const response = await axiosInstance.get('/transaksi/history');
+      // Handle potentially nested data structures
+      let transactions = [];
+      if (Array.isArray(response.data)) {
+        transactions = response.data;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        transactions = response.data.data;
+      } else if (response.data && Array.isArray(response.data.transactions)) {
+        transactions = response.data.transactions;
+      }
+
+      // Import utils inside function or ensure they are imported at top
+      const {
+        calculateTotalRevenue,
+        calculateTotalSales,
+        groupByStatus,
+        groupByPaymentType,
+        groupByProduct
+      } = await import('../utils/transactionUtils');
+
+      return {
+        totalRevenue: calculateTotalRevenue(transactions),
+        totalSales: calculateTotalSales(transactions),
+        statsByStatus: groupByStatus(transactions),
+        statsByPayment: groupByPaymentType(transactions),
+        statsByProduct: groupByProduct(transactions)
+      };
+    } catch (error) {
+      console.error('Failed to get dashboard stats:', error);
+      return {
+        totalRevenue: 0,
+        totalSales: 0,
+        statsByStatus: [],
+        statsByPayment: [],
+        statsByProduct: []
+      };
     }
   },
 };
@@ -122,3 +183,4 @@ export const createTransaction = transactionService.create;
 export const checkPaymentStatus = transactionService.checkPayment;
 export const confirmTransaction = transactionService.confirmPayment;
 export const getTransactionHistory = transactionService.getHistory;
+export const deleteTransaction = transactionService.delete;

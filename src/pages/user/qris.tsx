@@ -154,7 +154,8 @@ const QRISPayment = () => {
               name: buyerName,
               phone: buyerPhone,
               items: stateData.items || [],
-              transactionData: result.data || transactionData
+              transactionData: result.data || transactionData,
+              productLink: stateData.productLink
             }
           });
         }, 2000);
@@ -165,36 +166,36 @@ const QRISPayment = () => {
         setPaymentStatus('pending');
       }
     } catch (error: any) {
-  const errorData = error.response?.data;
+      const errorData = error.response?.data;
 
-  if (errorData?.message === 'Trx already confirmed') {
-    // ⬇️ ANGAP INI SUCCESS
-    setPaymentStatus('success');
-    toast.success('Pembayaran sudah terkonfirmasi sebelumnya');
+      if (errorData?.message === 'Trx already confirmed') {
+        // ⬇️ ANGAP INI SUCCESS
+        setPaymentStatus('success');
+        toast.success('Pembayaran sudah terkonfirmasi sebelumnya');
 
-    navigate('/payment-success', {
-      state: {
-        orderId: orderNumber,
-        amount: totalAmount,
-        email: buyerEmail,
-        name: buyerName,
-        phone: buyerPhone,
-        items: stateData.items || [],
-        transactionData
+        navigate('/payment-success', {
+          state: {
+            orderId: orderNumber,
+            amount: totalAmount,
+            email: buyerEmail,
+            name: buyerName,
+            phone: buyerPhone,
+            items: stateData.items || [],
+            transactionData
+          }
+        });
+
+        return;
       }
-    });
 
-    return;
-  }
+      console.error('Error confirming payment:', errorData || error.message);
+      toast.error(
+        errorData?.message ||
+        'Gagal mengonfirmasi pembayaran. Silakan tunggu beberapa saat.'
+      );
 
-  console.error('Error confirming payment:', errorData || error.message);
-  toast.error(
-    errorData?.message ||
-    'Gagal mengonfirmasi pembayaran. Silakan tunggu beberapa saat.'
-  );
-
-  setPaymentStatus('pending');
-}finally {
+      setPaymentStatus('pending');
+    } finally {
       setIsChecking(false);
     }
   };

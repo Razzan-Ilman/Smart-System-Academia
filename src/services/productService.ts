@@ -55,8 +55,16 @@ const mapToProduct = (item: any): Product => {
     id: item.id ? String(item.id) : undefined,
     name: item.name ?? "",
     description: item.description ?? "",
-    price: Number(item.price ?? 0),
-    link_product: item.link_product ?? "",
+    price: Number(item.price ?? item.Price ?? 0),
+    link_product:
+      item.link_product ??
+      item.linkProduct ??
+      item.LinkProduct ??
+      item.link ??
+      item.url ??
+      item.redirect_url ??
+      item.RedirectUrl ??
+      "",
 
     image:
       item.image ||
@@ -67,8 +75,8 @@ const mapToProduct = (item: any): Product => {
     images: Array.isArray(item.images)
       ? item.images
       : item.image
-      ? [item.image]
-      : [],
+        ? [item.image]
+        : [],
 
     category: item.category ?? "Uncategorized",
 
@@ -135,8 +143,8 @@ class ProductService {
       Array.isArray(resData.data)
         ? resData.data
         : Array.isArray(resData.data?.data)
-        ? resData.data.data
-        : [];
+          ? resData.data.data
+          : [];
 
     const total = resData.total ?? resData.data?.total ?? list.length;
 
