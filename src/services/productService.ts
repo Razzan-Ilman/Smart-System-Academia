@@ -1,6 +1,5 @@
 import axiosInstance from "./axiosInstance";
 
-
 /* =======================
    TYPES
 ======================= */
@@ -17,9 +16,9 @@ export interface Product {
   description: string;
   price: number;
   link_product: string;
-  image?: string; // API returns single image string (base64 or url)
-  images: string[]; // Keep for compatibility if we want to wrap it
-  category: string; // API returns category name directly
+  image?: string;
+  images: string[];
+  category: string;
   category_id?: number;
   stock?: number;
   add_ons?: AddOn[];
@@ -42,28 +41,57 @@ export interface ProductPayload {
 /* =======================
    NORMALIZER
 ======================= */
-const normalizeArray = (value: any): any[] => (Array.isArray(value) ? value : []);
+const normalizeArray = (value: any): any[] =>
+  Array.isArray(value) ? value : [];
 
-const mapToProduct = (item: any): Product => ({
-  id: String(item.id),
-  name: item.name,
-  description: item.description || "",
-  price: Number(item.price),
-  link_product: item.link_product || "",
-  image: item.image || (Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : undefined),
-  images: Array.isArray(item.images) && item.images.length > 0
-    ? item.images
-    : (item.image ? [item.image] : []),
-  category: item.category || "Uncategorized",
-  category_id: item.category_id ? Number(item.category_id) : undefined,
-  stock: item.stock,
-  add_ons: normalizeArray(item.add_ons).map((addon: any) => ({
-    id: String(addon.id),
-    name: addon.name,
-    price: Number(addon.price),
-    link_add_ons: addon.link_add_ons,
-  })),
-});
+const mapToProduct = (item: any): Product => {
+  // optional mapping category name → id (sesuaikan backend)
+  const categoryMap: Record<string, number> = {
+    Course: 1,
+    Kelas: 2,
+  };
+
+  return {
+    id: item.id ? String(item.id) : undefined,
+    name: item.name ?? "",
+    description: item.description ?? "",
+    price: Number(item.price ?? 0),
+    link_product: item.link_product ?? "",
+
+    image:
+      item.image ||
+      (Array.isArray(item.images) && item.images.length > 0
+        ? item.images[0]
+        : undefined),
+
+    images: Array.isArray(item.images)
+      ? item.images
+      : item.image
+      ? [item.image]
+      : [],
+
+    category: item.category ?? "Uncategorized",
+
+    // 🔥 FIX CATEGORY ID
+    category_id:
+      item.category_id ??
+      categoryMap[item.category] ??
+      undefined,
+
+    // 🔥 FIX STOCK
+    stock: Number(item.stock ?? item.stok ?? 0),
+
+    // 🔥 FIX ADD-ONS (semua kemungkinan nama)
+    add_ons: normalizeArray(
+      item.add_ons ?? item.addons ?? item.addOns
+    ).map((addon: any) => ({
+      id: addon.id ? String(addon.id) : undefined,
+      name: addon.name ?? "",
+      price: Number(addon.price ?? 0),
+      link_add_ons: addon.link_add_ons ?? "",
+    })),
+  };
+};
 
 /* =======================
    PRODUCT SERVICE
@@ -71,34 +99,26 @@ const mapToProduct = (item: any): Product => ({
 class ProductService {
   private endpoint = "/product";
 
-  // Ambil semua produk
   async getAll(): Promise<Product[]> {
     const response = await axiosInstance.get(this.endpoint);
     const rawList = normalizeArray(response.data?.data ?? response.data);
-
     return rawList.map(mapToProduct);
   }
 
-  // Ambil produk by ID
   async getById(id: string): Promise<Product> {
     const response = await axiosInstance.get(`${this.endpoint}/${id}`);
     const item = response.data?.data ?? response.data;
-
     return mapToProduct(item);
   }
 
-  // Ambil semua produk dengan nama kategori
   async getAllWithCategory(): Promise<ProductWithCategory[]> {
     const products = await this.getAll();
-
-
-    return products.map(p => ({
+    return products.map((p) => ({
       ...p,
       category_name: p.category || "Unknown",
     }));
   }
 
-  // Ambil produk paginated
   async getPaginated(
     page = 1,
     limit = 10,
@@ -115,8 +135,9 @@ class ProductService {
       Array.isArray(resData.data)
         ? resData.data
         : Array.isArray(resData.data?.data)
-          ? resData.data.data
-          : [];
+        ? resData.data.data
+        : [];
+
     const total = resData.total ?? resData.data?.total ?? list.length;
 
     return {
@@ -134,8 +155,9 @@ class ProductService {
       price: product.price,
       link_product: product.link_product,
       category_id: product.category_id,
+      stock: product.stock ?? 0,
     };
-    if (product.stock !== undefined) payload.stock = product.stock;
+
     if (product.add_ons?.length) {
       payload.add_ons = product.add_ons.map((addon) => ({
         name: addon.name,
@@ -143,6 +165,7 @@ class ProductService {
         link_add_ons: addon.link_add_ons || "",
       }));
     }
+
     return axiosInstance.post(this.endpoint, payload);
   }
 
@@ -169,12 +192,14 @@ class ImageProductService {
   }
 }
 
-// Ambil gambar produk
-export const getProductImage = async (id: string): Promise<string | null> => {
+export const getProductImage = async (
+  id: string
+): Promise<string | null> => {
   try {
     const response = await axiosInstance.get(`/product/${id}`);
     const data = response.data?.data ?? response.data;
     if (!data.image) return null;
+
     return data.image.startsWith("http")
       ? data.image
       : `https://example.com/uploads/${data.image}`;

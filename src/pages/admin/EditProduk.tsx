@@ -8,13 +8,15 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import RichTextEditor from "../../components/RichTextEditor";
-import { productService, addOnService } from "../../services/adminService";
+import { productService, addOnService, categoryService } from "../../services/adminService";
 import type { Product as APIProduct } from "../../services/adminService";
 import '../../styles/rich-text-editor.css';
 
-// TypeScript Interface - Sesuai Kontrak API
+// =========================
+// TYPES
+// =========================
 interface AddOn {
-    id?: string; // Optional ID for existing add-ons
+    id?: string;
     name: string;
     price: number;
     link_add_ons: string;
@@ -29,93 +31,121 @@ interface UpdateProductPayload {
     category_id: number;
 }
 
-// Category mapping
-const CATEGORIES = [
-    { id: 1, name: "Course", platform: "Google Drive" },
-    { id: 2, name: "Kelas", platform: "WhatsApp" }
-];
+
 
 export default function AdminEditProduk() {
     const navigate = useNavigate();
     const { id } = useParams();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Form State - Sesuai Kontrak API
+    // =========================
+    // FORM STATE
+    // =========================
     const [name, setName] = useState("");
     const [price, setPrice] = useState<number>(0);
     const [description, setDescription] = useState("");
     const [linkProduct, setLinkProduct] = useState("");
     const [categoryId, setCategoryId] = useState<number>(0);
+    const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
+    const [loadingCategories, setLoadingCategories] = useState<boolean>(true);
     const [stock, setStock] = useState<number>(0);
     const [images, setImages] = useState<string[]>([]);
     const [addOns, setAddOns] = useState<AddOn[]>([]);
 
-    // UI State
+    // =========================
+    // UI STATE
+    // =========================
     const [platformError, setPlatformError] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [isAddOnModalOpen, setIsAddOnModalOpen] = useState(false);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
-    const [tempAddOn, setTempAddOn] = useState<AddOn>({ name: "", price: 0, link_add_ons: "" });
+    const [tempAddOn, setTempAddOn] = useState<AddOn>({
+        name: "",
+        price: 0,
+        link_add_ons: ""
+    });
 
-    // Load existing product data from API
+    // =========================
+    // FETCH PRODUCT
+    // =========================
     useEffect(() => {
         if (!id) {
             navigate("/admin/produk");
             return;
         }
 
-        const fetchProduct = async () => {
+        const load = async () => {
             try {
                 setLoading(true);
+
+                // Load categories first (so select can show the correct option)
+                try {
+                    setLoadingCategories(true);
+                    const cats = await categoryService.getAll();
+                    setCategories(cats || []);
+                } catch (err) {
+                    console.warn('Failed to load categories', err);
+                    setCategories([]);
+                } finally {
+                    setLoadingCategories(false);
+                }
+
                 const product: APIProduct = await productService.getById(id);
 
-                setName(product.name);
-                setPrice(product.price);
-                setDescription(product.description);
-                setLinkProduct(product.link_product);
-                setCategoryId(product.category_id);
-                setStock(product.stock || 0);
-                setAddOns(product.add_ons || []);
-                setImages(product.images || []);
+                if (!product) {
+                    toast.error("Produk tidak ditemukan");
+                    navigate("/admin/produk");
+                    return;
+                }
 
-                setLoading(false);
+                setName(product.name);
+                setPrice(Number(product.price ?? 0));
+                setDescription(product.description ?? "");
+                setLinkProduct(product.link_product ?? "");
+                setCategoryId(product.category_id ?? 0);
+                setStock(Number(product.stock ?? 0));
+                // Normalize add-ons (ensure price is a number)
+                const normalizedAddOns = (product.add_ons || []).map(a => ({
+                    id: a.id,
+                    name: a.name,
+                    price: Number((a as any).price) || 0,
+                    link_add_ons: a.link_add_ons || ""
+                }));
+                setAddOns(normalizedAddOns);
+                setImages(product.images || []);
             } catch (error) {
-                console.error('Failed to fetch product:', error);
-                toast.error('Gagal memuat data produk');
+                console.error("Failed to fetch product:", error);
+                toast.error("Gagal memuat data produk");
                 navigate("/admin/produk");
+            } finally {
+                setLoading(false);
             }
         };
 
-        fetchProduct();
+        load();
     }, [id, navigate]);
 
-    // Handle image upload
+    // =========================
+    // IMAGE UPLOAD
+    // =========================
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files) return;
 
-        Array.from(files).forEach((file) => {
-            if (!file.type.startsWith('image/')) {
-                alert('Hanya file gambar yang diperbolehkan');
-                return;
-            }
-
-            if (file.size > 5 * 1024 * 1024) {
-                alert('Ukuran file maksimal 5MB');
-                return;
-            }
+        Array.from(files).forEach(file => {
+            if (!file.type.startsWith("image/")) return;
+            if (file.size > 5 * 1024 * 1024) return;
 
             const reader = new FileReader();
             reader.onloadend = () => {
-                const base64String = reader.result as string;
-                setImages(prev => [...prev, base64String]);
+                setImages(prev => [...prev, reader.result as string]);
             };
             reader.readAsDataURL(file);
         });
 
         if (fileInputRef.current) {
-            fileInputRef.current.value = '';
+            fileInputRef.current.value = "";
         }
     };
 
@@ -123,31 +153,35 @@ export default function AdminEditProduk() {
         setImages(prev => prev.filter((_, i) => i !== index));
     };
 
-    const triggerFileInput = () => {
-        fileInputRef.current?.click();
+    // =========================
+    // PLATFORM VALIDATION (uses categories from API)
+    // =========================
+    const getPlatformForCategory = (catId: number): string => {
+        const category = categories.find(c => c.id === catId);
+        if (!category) return "";
+
+        const catName = category.name.toLowerCase();
+        if (catName.includes("course") || catName.includes("kursus")) return "Google Drive";
+        if (catName.includes("kelas") || catName.includes("class")) return "WhatsApp";
+        return "";
     };
 
-    // Validate platform link
     const validatePlatformLink = (link: string, catId: number): boolean => {
         if (!link) return true;
 
-        const category = CATEGORIES.find(c => c.id === catId);
-        if (!category) return true;
+        const platform = getPlatformForCategory(catId);
+        if (!platform) return true;
 
-        if (category.name === "Course") {
-            const isValidGdrive = link.includes("drive.google.com") ||
-                link.includes("docs.google.com") ||
-                link.toLowerCase().includes("gdrive");
-            if (!isValidGdrive) {
-                setPlatformError("Link harus berupa Google Drive untuk kategori Course");
+        if (platform === "Google Drive") {
+            if (!link.includes("drive.google.com") && !link.includes("docs.google.com") && !link.toLowerCase().includes("gdrive")) {
+                setPlatformError("Link harus Google Drive untuk kategori Course");
                 return false;
             }
-        } else if (category.name === "Kelas") {
-            const isValidWA = link.includes("wa.me") ||
-                link.includes("whatsapp.com") ||
-                link.includes("chat.whatsapp");
-            if (!isValidWA) {
-                setPlatformError("Link harus berupa WhatsApp untuk kategori Kelas");
+        }
+
+        if (platform === "WhatsApp") {
+            if (!link.includes("whatsapp") && !link.includes("wa.me") && !link.includes("chat.whatsapp")) {
+                setPlatformError("Link harus WhatsApp untuk kategori Kelas");
                 return false;
             }
         }
@@ -158,12 +192,22 @@ export default function AdminEditProduk() {
 
     const handlePlatformLinkChange = (value: string) => {
         setLinkProduct(value);
-        if (categoryId) {
-            validatePlatformLink(value, categoryId);
-        }
+        if (categoryId) validatePlatformLink(value, categoryId);
     };
 
-    // Add-on Modal Handlers
+    const handleCategoryChange = (value: string) => {
+        const num = parseInt(value) || 0;
+        setCategoryId(num);
+        setPlatformError("");
+        if (linkProduct && num) validatePlatformLink(linkProduct, num);
+    };
+
+    // Trigger hidden file input
+    const triggerFileInput = () => {
+        fileInputRef.current?.click();
+    };
+
+    // Add-on modal handlers (same behavior as TambahProduk but integrated with API in save handler)
     const openAddOnModal = () => {
         setTempAddOn({ name: "", price: 0, link_add_ons: "" });
         setEditingIndex(null);
@@ -171,85 +215,9 @@ export default function AdminEditProduk() {
     };
 
     const openEditAddOnModal = (index: number) => {
-        setTempAddOn({ ...addOns[index] });
+        setTempAddOn({ ...addOns[index] } as AddOn);
         setEditingIndex(index);
         setIsAddOnModalOpen(true);
-    };
-
-    const handleSaveAddOn = async () => {
-        if (!tempAddOn.name || tempAddOn.price <= 0) {
-            toast.error("Nama dan harga add-on wajib diisi");
-            return;
-        }
-
-        if (!id) return;
-
-        try {
-            if (editingIndex !== null) {
-                // Update existing add-on
-                const existingAddOn = addOns[editingIndex];
-
-                if (existingAddOn.id) {
-                    // Update via API if add-on has ID (already exists in backend)
-                    await addOnService.update(existingAddOn.id, {
-                        name: tempAddOn.name,
-                        price: tempAddOn.price,
-                        link_add_ons: tempAddOn.link_add_ons
-                    });
-
-                    // Update local state
-                    const updated = [...addOns];
-                    updated[editingIndex] = { ...tempAddOn, id: existingAddOn.id };
-                    setAddOns(updated);
-
-                    toast.success('Add-on berhasil diperbarui');
-                } else {
-                    // Just update local state if not yet saved to backend
-                    const updated = [...addOns];
-                    updated[editingIndex] = tempAddOn;
-                    setAddOns(updated);
-                }
-            } else {
-                // Create new add-on via API
-                await addOnService.create(id, {
-                    name: tempAddOn.name,
-                    price: tempAddOn.price,
-                    link_add_ons: tempAddOn.link_add_ons
-                });
-
-                // Refresh add-ons from API to get the new ID
-                const product: APIProduct = await productService.getById(id);
-                setAddOns(product.add_ons || []);
-
-                toast.success('Add-on berhasil ditambahkan');
-            }
-
-            setIsAddOnModalOpen(false);
-            setTempAddOn({ name: "", price: 0, link_add_ons: "" });
-            setEditingIndex(null);
-        } catch (error) {
-            console.error('Failed to save add-on:', error);
-            toast.error('Gagal menyimpan add-on');
-        }
-    };
-
-    const handleDeleteAddOn = async (index: number) => {
-        const addOnToDelete = addOns[index];
-
-        if (addOnToDelete.id) {
-            // Delete via API if add-on has ID
-            try {
-                await addOnService.delete(addOnToDelete.id);
-                setAddOns(addOns.filter((_, i) => i !== index));
-                toast.success('Add-on berhasil dihapus');
-            } catch (error) {
-                console.error('Failed to delete add-on:', error);
-                toast.error('Gagal menghapus add-on');
-            }
-        } else {
-            // Just remove from local state if not yet saved to backend
-            setAddOns(addOns.filter((_, i) => i !== index));
-        }
     };
 
     const handleCloseModal = () => {
@@ -258,26 +226,75 @@ export default function AdminEditProduk() {
         setEditingIndex(null);
     };
 
-    // Submit Handler - Generate Payload Sesuai Kontrak API Update
-    const handleSave = async () => {
-        // Validation
-        if (!name || price <= 0 || !categoryId) {
-            alert("Nama, harga, dan kategori wajib diisi");
-            return;
-        }
+    const selectedPlatform = categoryId ? getPlatformForCategory(categoryId) : "";
 
-        if (!linkProduct) {
-            alert("Link produk wajib diisi");
-            return;
-        }
-
-        if (!validatePlatformLink(linkProduct, categoryId)) {
+    // =========================
+    // ADD-ON HANDLER
+    // =========================
+    const handleSaveAddOn = async () => {
+        if (!tempAddOn.name || tempAddOn.price <= 0) {
+            toast.error("Nama dan harga wajib diisi");
             return;
         }
 
         if (!id) return;
 
-        // Construct payload IDENTIK dengan kontrak API Update
+        try {
+            if (editingIndex !== null) {
+                const existing = addOns[editingIndex];
+
+                if (existing.id) {
+                    await addOnService.update(existing.id, tempAddOn);
+                }
+
+                const updated = [...addOns];
+                updated[editingIndex] = { ...tempAddOn, id: existing.id };
+                setAddOns(updated);
+            } else {
+                await addOnService.create(id, tempAddOn);
+                const product = await productService.getById(id);
+                const normalized = (product.add_ons || []).map((a: any) => ({
+                    id: a.id,
+                    name: a.name,
+                    price: Number(a.price) || 0,
+                    link_add_ons: a.link_add_ons || ""
+                }));
+                setAddOns(normalized);
+            }
+
+            setIsAddOnModalOpen(false);
+            setEditingIndex(null);
+            setTempAddOn({ name: "", price: 0, link_add_ons: "" });
+            toast.success("Add-on berhasil disimpan");
+        } catch {
+            toast.error("Gagal menyimpan add-on");
+        }
+    };
+
+    const handleDeleteAddOn = async (index: number) => {
+        const addon = addOns[index];
+
+        try {
+            if (addon.id) await addOnService.delete(addon.id);
+            setAddOns(prev => prev.filter((_, i) => i !== index));
+            toast.success("Add-on dihapus");
+        } catch {
+            toast.error("Gagal menghapus add-on");
+        }
+    };
+
+    // =========================
+    // SAVE PRODUCT
+    // =========================
+    const handleSave = async () => {
+        if (!name || price <= 0 || !categoryId || !linkProduct) {
+            alert("Lengkapi data wajib");
+            return;
+        }
+
+        if (!validatePlatformLink(linkProduct, categoryId)) return;
+        if (!id) return;
+
         const payload: UpdateProductPayload = {
             name,
             description,
@@ -290,19 +307,14 @@ export default function AdminEditProduk() {
         try {
             setSaving(true);
             await productService.update(id, payload);
-            toast.success('Produk berhasil diperbarui');
+            toast.success("Produk berhasil diperbarui");
             navigate("/admin/produk");
-        } catch (error) {
-            console.error('Failed to update product:', error);
-            toast.error('Gagal memperbarui produk');
+        } catch {
+            toast.error("Gagal memperbarui produk");
         } finally {
             setSaving(false);
         }
     };
-
-    const selectedCategory = CATEGORIES.find(c => c.id === categoryId);
-    const selectedPlatform = selectedCategory ? selectedCategory.platform : "";
-
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -389,16 +401,31 @@ export default function AdminEditProduk() {
                     {/* Category ID */}
                     <div>
                         <label className="block text-gray-500 font-bold mb-2">Kategori *</label>
-                        <select
-                            value={categoryId}
-                            onChange={(e) => setCategoryId(parseInt(e.target.value))}
-                            className="w-full px-4 py-4 bg-white border-2 border-blue-400 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
-                        >
-                            <option value={0}>Pilih Kategori</option>
-                            {CATEGORIES.map(cat => (
-                                <option key={cat.id} value={cat.id}>{cat.name}</option>
-                            ))}
-                        </select>
+                        {loadingCategories ? (
+                            <div className="w-full px-4 py-4 bg-white border-2 border-blue-400 rounded-xl shadow-sm text-gray-500 text-center">
+                                Memuat kategori...
+                            </div>
+                        ) : categories.length === 0 ? (
+                            <div className="w-full px-4 py-4 bg-red-50 border-2 border-red-300 rounded-xl text-red-600 text-center">
+                                Tidak ada kategori tersedia.
+                            </div>
+                        ) : (
+                            <select
+                                value={categoryId}
+                                onChange={(e) => handleCategoryChange(e.target.value)}
+                                className="w-full px-4 py-4 bg-white border-2 border-blue-400 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
+                            >
+                                <option value={0}>Pilih Kategori</option>
+                                {categories.map(cat => {
+                                    const platform = getPlatformForCategory(cat.id);
+                                    return (
+                                        <option key={cat.id} value={cat.id}>
+                                            {cat.name}{platform ? ` (${platform})` : ''}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        )}
                     </div>
 
                     {/* Link Product */}

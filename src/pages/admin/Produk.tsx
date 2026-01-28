@@ -21,6 +21,7 @@ interface Product {
   price: string;
   priceValue: number;
   date: string;
+  stock: number;
 }
 
 const ITEMS_PER_PAGE = 20;
@@ -65,6 +66,7 @@ export default function AdminProduk() {
           name: product.name,
           price: `Rp ${product.price.toLocaleString("id-ID")}`,
           priceValue: product.price,
+          stock: product.stock || 0,
           date:
             (product as any).created_at ??
             (product as any).createdAt ??
@@ -223,6 +225,7 @@ export default function AdminProduk() {
             <div className="col-span-2">Gambar</div>
             <div className="col-span-5">Judul Produk</div>
             <div className="col-span-2">Harga</div>
+            <div className="col-span-1">Stok</div>
             <div className="col-span-1 text-center">Edit</div>
             <div className="col-span-1 text-center">Hapus</div>
           </div>
@@ -250,6 +253,7 @@ export default function AdminProduk() {
                   </div>
                   <div className="col-span-5 font-bold">{item.title}</div>
                   <div className="col-span-2 font-bold">{item.price}</div>
+                  <div className="col-span-1 font-medium">{item.stock}</div>
                   <div className="col-span-1 flex justify-center">
                     <button
                       onClick={() => navigate(`/admin/produk/edit/${item.id}`)}
