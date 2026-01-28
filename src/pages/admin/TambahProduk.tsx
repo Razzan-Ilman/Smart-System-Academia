@@ -11,7 +11,6 @@ import RichTextEditor from "../../components/RichTextEditor";
 import { productService } from "../../services/productService";
 import categoryService from "../../services/categoryService";
 import { imageProductService } from "../../services/imageProductService";
-import '../../styles/rich-text-editor.css';
 
 // TypeScript Interface - Sesuai Kontrak API
 interface AddOn {
@@ -344,6 +343,7 @@ export default function AdminTambahProduk() {
                                     className="w-full h-full object-cover rounded-2xl border-2 border-blue-400"
                                 />
                                 <button
+                                    type="button"
                                     onClick={() => handleDeleteImage(index)}
                                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600"
                                 >
@@ -377,7 +377,7 @@ export default function AdminTambahProduk() {
                         />
                     </div>
 
-                    {/* Description */}
+                    {/* Description with RichTextEditor */}
                     <div>
                         <label className="block text-gray-500 font-bold mb-2">Deskripsi</label>
                         <RichTextEditor
@@ -539,6 +539,7 @@ export default function AdminTambahProduk() {
             {/* Action Buttons */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex justify-between items-center">
                 <button
+                    type="button"
                     onClick={() => navigate("/admin/produk")}
                     disabled={saving}
                     className="px-10 py-3 bg-white border border-red-500 text-red-500 rounded-xl font-bold hover:bg-red-50 transition shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -546,6 +547,7 @@ export default function AdminTambahProduk() {
                     Cancel
                 </button>
                 <button
+                    type="button"
                     onClick={handleSave}
                     disabled={saving}
                     className={`px-10 py-3 rounded-xl font-bold transition shadow-lg active:scale-95 ${saving ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 text-white'
@@ -600,12 +602,14 @@ export default function AdminTambahProduk() {
 
                         <div className="flex gap-3 mt-6">
                             <button
+                                type="button"
                                 onClick={handleCloseModal}
                                 className="flex-1 py-3 rounded-xl font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
                             >
                                 Batal
                             </button>
                             <button
+                                type="button"
                                 onClick={handleSaveAddOn}
                                 className="flex-1 py-3 rounded-xl font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all"
                             >
