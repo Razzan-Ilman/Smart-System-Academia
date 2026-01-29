@@ -1,7 +1,7 @@
 import { ShoppingOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { getProductImage } from '../../services/productService';
+import { getProductImage } from '../../../services/productService';
 
 interface Props {
   id: string;

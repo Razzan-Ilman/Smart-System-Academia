@@ -15,19 +15,17 @@ const QRISPayment = () => {
   const stateData = location.state || {};
 
   const [paymentStatus, setPaymentStatus] = useState('pending');
-  const [timeLeft, setTimeLeft] = useState(1 * 60); // 1 minute in seconds
+  const [timeLeft, setTimeLeft] = useState(5 * 60); // 1 minute in seconds
   const [copied, setCopied] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [referenceNo, setReferenceNo] = useState('');
 
   // Get payment data
-  // Get payment data
   const totalAmount = stateData.amount || parseInt(searchParams.get('amount') || '425000');
 
   // Display ID (UI) - prioritize string ID
   const orderNumber = stateData.transactionData?.trx_id || stateData.orderId || searchParams.get('orderId') || `ORD-${Date.now()}`;
-
 
 
   const buyerEmail = stateData.email || searchParams.get('email') || '';
@@ -57,22 +55,19 @@ const QRISPayment = () => {
     transactionData.qr_data ||
     transactionData.qris_data || "";
 
-  // Logic to determine if it's an image URL or a QRIS data string
   const isUrl = typeof rawQrValue === 'string' && (rawQrValue.startsWith('http') || rawQrValue.startsWith('data:image'));
   const qrCodeUrl = isUrl ? rawQrValue : null;
   const qrCodeString = !isUrl ? rawQrValue : null;
 
-  // QR Code data extraction
-
   // Countdown timer
   useEffect(() => {
     if (timeLeft <= 0) {
-      // Timer expired - redirect to payment failed
       toast.error('Waktu pembayaran telah habis!');
       setTimeout(() => {
         navigate('/payment-failed', {
+          replace: true,
           state: {
-            ...location.state, // Preserve original state
+            ...location.state,
             orderId: orderNumber,
             amount: totalAmount,
             email: buyerEmail,
@@ -113,7 +108,6 @@ const QRISPayment = () => {
       minimumFractionDigits: 0,
     }).format(value);
 
-  // Copy to clipboard
   const handleCopy = () => {
     navigator.clipboard.writeText(orderNumber);
     setCopied(true);
@@ -121,14 +115,12 @@ const QRISPayment = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Handle back navigation
   const handleBack = () => {
     if (confirm('Apakah Anda yakin ingin membatalkan pembayaran?')) {
       navigate('/payment', { state: location.state });
     }
   };
 
-  // Check payment status from API - Updated to confirmation flow
   const checkPaymentStatus = async () => {
     if (isChecking) return;
 
@@ -136,8 +128,6 @@ const QRISPayment = () => {
     setPaymentStatus('checking');
 
     try {
-      // Use the confirmation service function instead of polling
-      // Backend expects PUT /transaksi/:id/confirm-payment with originalReferenceNo
       const result = await confirmTransaction(orderNumber, referenceNo || 'MANUAL-CHECK');
 
       // Backend response usually contains updated status
@@ -148,6 +138,7 @@ const QRISPayment = () => {
         toast.success('Pembayaran terkonfirmasi!');
         setTimeout(() => {
           navigate('/payment-success', {
+            replace: true,
             state: {
               ...location.state,
               orderId: orderNumber,
@@ -208,10 +199,7 @@ const QRISPayment = () => {
     navigate('/payment', { replace: true, state: location.state });
   };
 
-  // Automatic polling disabled because backend uses confirmation flow
-  // (Prevents 404 polling errors)
   useEffect(() => {
-    // No automatic polling
   }, []);
 
   return (
@@ -384,23 +372,6 @@ const QRISPayment = () => {
               </ol>
             </div>
 
-            {/* Reference Number Input (Required for Confirm Payment API) */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Nomor Referensi / Kode Bayar (Opsional):
-              </label>
-              <input
-                type="text"
-                value={referenceNo}
-                onChange={(e) => setReferenceNo(e.target.value)}
-                placeholder="Masukkan nomor referensi dari aplikasi DANA"
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 bg-gray-50 focus:border-purple-400 outline-none transition-all text-sm"
-              />
-              <p className="mt-2 text-[11px] text-gray-500 italic">
-                *Beberapa sistem memerlukan nomor referensi pembayaran untuk verifikasi manual.
-              </p>
-            </div>
-
             {/* Check Payment Button */}
             <button
               onClick={checkPaymentStatus}
@@ -430,7 +401,7 @@ const QRISPayment = () => {
               )}
             </button>
 
-            {/* Manual check encouraged because auto-check is disabled */}
+            {/* Manual check Karena auto-check is disabled */}
             {paymentStatus === 'pending' && !isChecking && (
               <div className="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-100">
                 <p className="flex items-center justify-center gap-2 text-sm text-amber-700">
@@ -439,8 +410,6 @@ const QRISPayment = () => {
                 </p>
               </div>
             )}
-
-
 
             {/* Cancel Payment Button */}
             <button

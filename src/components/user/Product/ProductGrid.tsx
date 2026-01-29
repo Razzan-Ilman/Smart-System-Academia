@@ -1,4 +1,5 @@
 import ProductCard from "./ProductCard";
+import type { Product } from "../../../services/productService";
 
 // Membagi array menjadi beberapa chunk (untuk slider mobile)
 const chunkArray = <T,>(array: T[], size: number): T[][] => {
@@ -10,28 +11,30 @@ const chunkArray = <T,>(array: T[], size: number): T[][] => {
 };
 
 interface ProductGridProps {
-  products: {
-    id: string;
-    title: string;
-    category: string;
-    price: string;
-    image?: string;
-  }[];
+  products: Product[]; // ✅ Gunakan Product dari service
 }
 
 const ProductGrid = ({ products }: ProductGridProps) => {
-
-  const slides = chunkArray(products, 4);
-
   if (!products.length) {
     return <p className="text-center text-gray-500">Produk tidak ditemukan</p>;
   }
+
+  // ✅ Transform Product → ProductCard props
+  const transformedProducts = products.map((product) => ({
+    id: product.id || '',
+    title: product.name,        // name → title
+    category: product.category,
+    price: product.price,       // number (akan di-format di ProductCard)
+    image: product.image,
+  }));
+
+  const slides = chunkArray(transformedProducts, 4);
 
   return (
     <>
       {/* Desktop Grid */}
       <div className="hidden md:grid md:grid-cols-4 md:gap-6">
-        {products.map((product) => (
+        {transformedProducts.map((product) => (
           <ProductCard
             key={product.id}
             id={product.id}

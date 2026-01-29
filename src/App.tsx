@@ -61,7 +61,7 @@ function App() {
             <Route path="list-transaksi" element={<ListTransaksi />} />
           </Route>
 
-          {/* 404 Not Found - Catch all routes */}
+          {/* 404 Not Found */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

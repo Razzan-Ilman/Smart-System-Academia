@@ -18,37 +18,6 @@ const Payment = () => {
   const [agreeMarketing, setAgreeMarketing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Initialize
-  useEffect(() => {
-    // Fetch user profile to pre-fill form
-    const fetchUserProfile = async () => {
-      try {
-        const user = await authService.getUserProfile();
-        if (user) {
-          setBuyerInfo(prev => ({
-            ...prev,
-            name: user.name || prev.name,
-            email: user.email || prev.email,
-            phone: user.phone || user.phoneNumber || prev.phone
-          }));
-        }
-      } catch (error) {
-        console.log('User not logged in or failed to fetch profile', error);
-        // Try local storage fallback directly if API failed
-        const localUser = authService.getUserData();
-        if (localUser) {
-          setBuyerInfo(prev => ({
-            ...prev,
-            name: localUser.name || prev.name,
-            email: localUser.email || prev.email,
-            phone: localUser.phone || (localUser as any).phoneNumber || prev.phone
-          }));
-        }
-      }
-    };
-    fetchUserProfile();
-  }, []);
-
   // Get dynamic data from DetailProduk
   const rawLocationState = location.state || {};
 

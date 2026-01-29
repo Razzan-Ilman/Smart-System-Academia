@@ -1,75 +1,83 @@
 import { useState, useEffect, useCallback } from 'react';
-import { productService } from '../services/productService';
-import { useDebounce } from './useDebounce';
+import productService, { type Product } from '../services/productService';
 
-export interface GridProduct {
-    id: string;
-    title: string;
-    category: string;
-    price: string;
-    image?: string;
+interface UseProductsOptions {
+  limit?: number;
+  category_id?: number;
+  autoFetch?: boolean;
 }
 
-interface UseProductsParams {
-    limit?: number;
-}
+export const useProducts = ({
+  limit = 10,
+  category_id,
+  autoFetch = true
+}: UseProductsOptions = {}) => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-export const useProducts = ({ limit = 10 }: UseProductsParams = {}) => {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [products, setProducts] = useState<GridProduct[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [page, setPage] = useState(1);
-    const [total, setTotal] = useState(0);
-    const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
-    const debouncedSearch = useDebounce(searchQuery, 500);
+  const fetchProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    const fetchProducts = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-
-            const res = await productService.getPaginated(page, limit, debouncedSearch);
-
-            const mapped: GridProduct[] = res.data.map((p: any) => ({
-                id: p.id!,
-                title: p.name,
-                category: p.category || "Uncategorized",
-                price: `IDR ${p.price.toLocaleString('id-ID')}`,
-                image: p.image,
-            }));
-
-            setProducts(mapped);
-            setTotal(res.total);
-        } catch (error) {
-            console.error('Fetch products error:', error);
-            setError('Gagal memuat data produk.');
-        } finally {
-            setLoading(false);
-        }
-    }, [page, limit, debouncedSearch]);
-
-    // Effect for fetching on page change
-    useEffect(() => {
-        fetchProducts();
-    }, [fetchProducts]);
-
-    // Effect for resetting page on search
-    useEffect(() => {
-        setPage(1);
-    }, [debouncedSearch]);
-
-    const totalPages = Math.ceil(total / limit);
-
-    return {
-        products,
-        loading,
-        error,
+      const res = await productService.getPaginated(
         page,
-        setPage,
+        limit,
         searchQuery,
-        setSearchQuery,
-        totalPages,
-        refresh: fetchProducts,
-    };
+        category_id
+      );
+
+      setProducts(res.data);
+      setTotal(res.total);
+      setTotalPages(res.totalPages);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Gagal memuat produk');
+      setProducts([]);
+      setTotal(0);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, limit, searchQuery, category_id]);
+
+  // ✅ FETCH DATA
+  useEffect(() => {
+    if (!autoFetch) return;
+
+    // Cegah page invalid
+    if (page > totalPages && totalPages > 0) {
+      setPage(1);
+      return;
+    }
+
+    fetchProducts();
+  }, [fetchProducts, autoFetch, page, totalPages]);
+
+  // ✅ RESET PAGE SAAT SEARCH BERUBAH
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, category_id]);
+
+  const refresh = useCallback(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  return {
+    products,
+    loading,
+    error,
+    page,
+    setPage,
+    searchQuery,
+    setSearchQuery,
+    totalPages,
+    total,
+    refresh
+  };
 };

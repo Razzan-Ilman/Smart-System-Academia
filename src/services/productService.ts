@@ -127,61 +127,41 @@ class ProductService {
     }));
   }
 
-  async getPaginated(
-    page = 1,
-    limit = 10,
-    search?: string,
-    category_id?: number,
-    sortBy?: string,
-    order?: 'asc' | 'desc'
-  ) {
-    const params: any = { page, limit };
-    if (search?.trim()) params.search = search;
-    if (category_id !== undefined) params.category_id = category_id;
-    if (sortBy) {
-      params.sortBy = sortBy;
-      params.order = order || 'asc';
-    }
-
-    const response = await axiosInstance.get(this.endpoint, { params });
-    const resData = response.data ?? {};
-    const list =
-      Array.isArray(resData.data)
-        ? resData.data
-        : Array.isArray(resData.data?.data)
-          ? resData.data.data
-          : [];
-
-    const total = resData.total ?? resData.data?.total ?? list.length;
-
-    return {
-      data: list.map(mapToProduct),
-      total: Number(total),
-      page,
-      limit,
-    };
+async getPaginated(
+  page = 1,
+  limit = 10,
+  search?: string,
+  category_id?: number,
+  sortBy?: string,
+  order?: 'asc' | 'desc'
+) {
+  const params: any = { page, limit };
+  if (search?.trim()) params.search = search;
+  if (category_id !== undefined) params.category_id = category_id;
+  if (sortBy) {
+    params.sortBy = sortBy;
+    params.order = order || 'asc';
   }
 
-  async create(product: ProductPayload) {
-    const payload: any = {
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      link_product: product.link_product,
-      category_id: product.category_id,
-      stock: product.stock ?? 0,
-    };
+  const response = await axiosInstance.get(this.endpoint, { params });
+  const resData = response.data ?? {};
 
-    if (product.add_ons?.length) {
-      payload.add_ons = product.add_ons.map((addon) => ({
-        name: addon.name,
-        price: addon.price,
-        link_add_ons: addon.link_add_ons || "",
-      }));
-    }
+  const list = Array.isArray(resData.data) ? resData.data : [];
 
-    return axiosInstance.post(this.endpoint, payload);
-  }
+  const meta = resData.meta ?? {};
+
+  return {
+    data: list.map(mapToProduct),
+
+    // 🔥 AMBIL LANGSUNG DARI BACKEND
+    total: Number(meta.totalData ?? list.length),
+    totalPages: Number(meta.totalPage ?? 1),
+    page: Number(meta.page ?? page),
+    limit: Number(meta.limit ?? limit),
+  };
+}
+
+
 
   async update(id: string, product: Partial<Product>) {
     return axiosInstance.put(`${this.endpoint}/${id}`, product);
