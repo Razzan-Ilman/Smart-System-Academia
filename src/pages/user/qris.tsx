@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import Navbar from '../../components/user/Navbar';
 import { QrCode, CheckCircle2, Clock, Copy, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { confirmTransaction } from '../../services/transactionService';
+import axios from 'axios';
 
 const QRISPayment = () => {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ const QRISPayment = () => {
   const stateData = location.state || {};
 
   const [paymentStatus, setPaymentStatus] = useState('pending');
-  const [timeLeft, setTimeLeft] = useState(5 * 60); // 1 minute in seconds
+  const [timeLeft, setTimeLeft] = useState(5 * 60); // 5 minutes in seconds
   const [copied, setCopied] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
@@ -26,7 +26,6 @@ const QRISPayment = () => {
 
   // Display ID (UI) - prioritize string ID
   const orderNumber = stateData.transactionData?.trx_id || stateData.orderId || searchParams.get('orderId') || `ORD-${Date.now()}`;
-
 
   const buyerEmail = stateData.email || searchParams.get('email') || '';
   const buyerName = stateData.name || searchParams.get('name') || '';
@@ -121,21 +120,44 @@ const QRISPayment = () => {
     }
   };
 
-  const checkPaymentStatus = async () => {
+  // ✅ UPDATED: Check Payment Status menggunakan endpoint baru
+  const checkPaymentStatusAPI = async () => {
     if (isChecking) return;
 
     setIsChecking(true);
     setPaymentStatus('checking');
 
     try {
-      const result = await confirmTransaction(orderNumber, referenceNo || 'MANUAL-CHECK');
+      console.log('📤 Checking payment status for trxId:', orderNumber);
 
-      // Backend response usually contains updated status
-      const status = result?.data?.status || result?.status;
+      // ✅ Call API endpoint yang benar
+      const response = await axios.get(
+        `https://ssa-payment.lskk.co.id/api/v1/transaksi/check-payment/${orderNumber}`
+      );
 
-      if (status === 'PAID' || status === 'SUCCESS' || status === 'settlement') {
+      console.log('📥 Payment Status Response:', response.data);
+      console.log('🔍 Full Response:', JSON.stringify(response.data, null, 2));
+
+      const result = response.data;
+
+      // ✅ Normalisasi status dari berbagai kemungkinan field
+      const rawStatus = 
+        result?.data?.payment_status ||
+        result?.data?.status ||
+        result?.payment_status ||
+        result?.status ||
+        '';
+
+      const status = String(rawStatus).toLowerCase();
+
+      console.log('🔍 Payment Status:', status);
+      console.log('🔍 Raw Status:', rawStatus);
+
+      // ✅ Cek status pembayaran
+      if (status === 'paid' || status === 'success' || status === 'settlement' || status === 'completed') {
         setPaymentStatus('success');
-        toast.success('Pembayaran terkonfirmasi!');
+        toast.success('Pembayaran terkonfirmasi! 🎉');
+        
         setTimeout(() => {
           navigate('/payment-success', {
             replace: true,
@@ -152,21 +174,45 @@ const QRISPayment = () => {
             }
           });
         }, 2000);
+      } else if (status === 'pending' || status === 'waiting' || status === 'unpaid' || status === '') {
+        // Status masih pending
+        toast.info('Pembayaran belum terdeteksi. Pastikan Anda sudah scan QRIS dan menyelesaikan pembayaran.');
+        setPaymentStatus('pending');
+      } else if (status === 'failed' || status === 'expired' || status === 'cancelled' || status === 'cancel') {
+        // Status gagal/expired
+        toast.error('Pembayaran gagal atau kadaluarsa');
+        setPaymentStatus('pending');
+        
+        setTimeout(() => {
+          navigate('/payment-failed', {
+            replace: true,
+            state: {
+              ...location.state,
+              orderId: orderNumber,
+              amount: totalAmount,
+              email: buyerEmail,
+              name: buyerName,
+              phone: buyerPhone,
+              reason: 'Pembayaran gagal atau expired'
+            }
+          });
+        }, 2000);
       } else {
-        // Handle failure or still pending cases from the confirm response
-        const msg = status === 'PENDING' ? 'Pembayaran belum terdeteksi. Pastikan Anda sudah menekan tombol Bayar di aplikasi DANA.' : `Status saat ini: ${status || 'Pending'}`;
-        toast.info(msg);
+        // Status tidak dikenali
+        console.warn('⚠️ Unknown payment status:', rawStatus);
+        toast.warning(`Status pembayaran: ${rawStatus}`);
         setPaymentStatus('pending');
       }
     } catch (error: any) {
-      const errorData = error.response?.data;
+      console.error('❌ Error checking payment status:', error);
+      
+      const errorMessage = 
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        'Gagal memeriksa status pembayaran';
 
-      console.error('Error confirming payment:', errorData || error.message);
-      toast.error(
-        errorData?.message ||
-        'Gagal mengonfirmasi pembayaran. Silakan tunggu beberapa saat.'
-      );
-
+      toast.error(errorMessage);
       setPaymentStatus('pending');
     } finally {
       setIsChecking(false);
@@ -177,9 +223,6 @@ const QRISPayment = () => {
     setShowCancelModal(false);
     navigate('/payment', { replace: true, state: location.state });
   };
-
-  useEffect(() => {
-  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 relative overflow-hidden">
@@ -322,7 +365,7 @@ const QRISPayment = () => {
             </div>
 
             {/* Instructions */}
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6 mt-6 w-full max-w-md">
               <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
                 <QrCode className="w-5 h-5 text-blue-600" />
                 Cara Pembayaran:
@@ -353,9 +396,9 @@ const QRISPayment = () => {
 
             {/* Check Payment Button */}
             <button
-              onClick={checkPaymentStatus}
+              onClick={checkPaymentStatusAPI}
               disabled={isChecking || paymentStatus === 'success'}
-              className={`w-full py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 mb-4 ${isChecking
+              className={`w-full max-w-md py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 mb-4 ${isChecking
                 ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                 : paymentStatus === 'success'
                   ? 'bg-green-500 text-white'
@@ -380,12 +423,12 @@ const QRISPayment = () => {
               )}
             </button>
 
-            {/* Manual check Karena auto-check is disabled */}
+            {/* Manual check info */}
             {paymentStatus === 'pending' && !isChecking && (
-              <div className="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-100">
+              <div className="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-100 w-full max-w-md">
                 <p className="flex items-center justify-center gap-2 text-sm text-amber-700">
                   <AlertCircle className="w-4 h-4" />
-                  Sistem menunggu konfirmasi dari DANA. Klik tombol di atas setelah transaksi selesai.
+                  Klik tombol di atas setelah Anda menyelesaikan pembayaran via QRIS.
                 </p>
               </div>
             )}
@@ -394,14 +437,14 @@ const QRISPayment = () => {
             <button
               onClick={() => setShowCancelModal(true)}
               disabled={paymentStatus === 'checking' || paymentStatus === 'success'}
-              className="w-full py-4 rounded-2xl font-semibold text-gray-600 bg-white border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full max-w-md py-4 rounded-2xl font-semibold text-gray-600 bg-white border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Batalkan Pembayaran
             </button>
 
             {/* Success Message */}
             {paymentStatus === 'success' && (
-              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl text-center">
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl text-center w-full max-w-md">
                 <p className="text-green-700 font-medium">
                   Pembayaran Anda telah berhasil diverifikasi! Redirecting...
                 </p>
