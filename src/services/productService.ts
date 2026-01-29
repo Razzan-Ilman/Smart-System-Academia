@@ -131,11 +131,17 @@ class ProductService {
     page = 1,
     limit = 10,
     search?: string,
-    category_id?: number
+    category_id?: number,
+    sortBy?: string,
+    order?: 'asc' | 'desc'
   ) {
     const params: any = { page, limit };
     if (search?.trim()) params.search = search;
     if (category_id !== undefined) params.category_id = category_id;
+    if (sortBy) {
+      params.sortBy = sortBy;
+      params.order = order || 'asc';
+    }
 
     const response = await axiosInstance.get(this.endpoint, { params });
     const resData = response.data ?? {};

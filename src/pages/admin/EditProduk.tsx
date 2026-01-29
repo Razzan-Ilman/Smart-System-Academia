@@ -123,27 +123,14 @@ export default function AdminEditProduk() {
                     }
                 }
 
-                // DEBUGGING: Show keys to user so they can report back
-                console.log("Product Data:", product);
-                const keys = Object.keys(product).filter(k => k.toLowerCase().includes('link') || k.toLowerCase().includes('url'));
-                if (keys.length > 0) {
-                    toast.info(`Link keys found: ${keys.join(", ")}`);
-                } else {
-                    toast.error("DEBUG: No 'link' or 'url' fields found in API response. Check console for full object keys.");
-                    toast.info(`All Keys: ${Object.keys(product).join(", ")}`);
-                }
+
 
                 setName(product.name);
                 setPrice(Number(product.price ?? 0));
                 setDescription(product.description ?? "");
 
                 // Handle various backend field casings
-                setLinkProduct(
-                    product.link_product ||
-                    (product as any).linkProduct ||
-                    (product as any).LinkProduct ||
-                    ""
-                );
+                setLinkProduct(finalLink || "");
 
                 setCategoryId(
                     product.category_id ||
@@ -484,17 +471,14 @@ export default function AdminEditProduk() {
                                 type="text"
                                 value={linkProduct}
                                 onChange={(e) => handlePlatformLinkChange(e.target.value)}
-                                disabled={!categoryId}
                                 placeholder={
                                     selectedPlatform
                                         ? `Link ${selectedPlatform}`
-                                        : "Pilih kategori terlebih dahulu"
+                                        : "Link Produk (Google Drive, WhatsApp, atau lainnya)"
                                 }
-                                className={`flex-1 px-4 py-3 bg-white rounded-full border shadow-sm outline-none focus:ring-2 ${!categoryId
-                                    ? 'border-gray-200 cursor-not-allowed bg-gray-100'
-                                    : platformError
-                                        ? 'border-red-400 focus:ring-red-400'
-                                        : 'border-gray-200 focus:ring-blue-400'
+                                className={`flex-1 px-4 py-3 bg-white rounded-full border shadow-sm outline-none focus:ring-2 ${platformError
+                                    ? 'border-red-400 focus:ring-red-400'
+                                    : 'border-gray-200 focus:ring-blue-400'
                                     }`}
                             />
                             {platformError && (

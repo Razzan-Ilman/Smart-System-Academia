@@ -12,6 +12,7 @@ import ConfirmModal from "../../components/admin/ConfirmModal";
 import { categoryService } from "../../services/adminService";
 import type { Category as APICategory } from "../../services/adminService";
 import { useDebounce } from "../../hooks/useDebounce";
+import Pagination from "../../components/admin/Pagination";
 
 interface Category {
   id: number;
@@ -231,33 +232,13 @@ export default function KategoriProdukContent() {
             </div>
           )}
 
-          {/* Desktop Pagination Controls */}
-          {filteredCategories.length > ITEMS_PER_PAGE && (
-            <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
-              <p className="text-sm text-gray-600 font-medium">
-                Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredCategories.length)} dari {filteredCategories.length} kategori
-              </p>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 disabled:opacity-50 hover:bg-gray-50 transition text-sm font-medium"
-                >
-                  Prev
-                </button>
-                <div className="flex items-center gap-1 mx-2">
-                  <span className="text-sm font-bold text-gray-700">Page {currentPage} of {totalPages}</span>
-                </div>
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 disabled:opacity-50 hover:bg-gray-50 transition text-sm font-medium"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+
+
         </div>
 
         {/* Mobile Card View - Shown on Mobile/Tablet */}
@@ -310,28 +291,11 @@ export default function KategoriProdukContent() {
                 );
               })}
 
-              {/* Mobile Pagination Controls */}
-              {filteredCategories.length > ITEMS_PER_PAGE && (
-                <div className="flex justify-center gap-2 pt-2">
-                  <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1 bg-white rounded border border-gray-200 text-xs font-bold disabled:opacity-50"
-                  >
-                    Prev
-                  </button>
-                  <span className="text-xs font-bold text-gray-500 flex items-center">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1 bg-white rounded border border-gray-200 text-xs font-bold disabled:opacity-50"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             </>
           ) : (
             <div className="p-10 text-center text-gray-400 font-medium bg-white rounded-xl border border-gray-200">

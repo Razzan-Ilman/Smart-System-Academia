@@ -1,10 +1,13 @@
-import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, CreditCard, CheckCircle2, User, Mail, Phone, Plus, ChevronRight, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ShoppingCart, CreditCard, User, Mail, Phone, Plus, ChevronRight, AlertCircle } from 'lucide-react';
 import Navbar from '../../components/user/Navbar';
 import PopupPayment from '../../components/user/PopupPayment';
 import { toast } from 'sonner';
 import { createTransaction as apiCreateTransaction } from '../../services/transactionService';
+import { authService } from '../../services/adminService';
+import { paymentMethods } from '../../constants/paymentMethods';
+
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -15,8 +18,65 @@ const Payment = () => {
   const [agreeMarketing, setAgreeMarketing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Initialize
+  useEffect(() => {
+    // Fetch user profile to pre-fill form
+    const fetchUserProfile = async () => {
+      try {
+        const user = await authService.getUserProfile();
+        if (user) {
+          setBuyerInfo(prev => ({
+            ...prev,
+            name: user.name || prev.name,
+            email: user.email || prev.email,
+            phone: user.phone || user.phoneNumber || prev.phone
+          }));
+        }
+      } catch (error) {
+        console.log('User not logged in or failed to fetch profile', error);
+        // Try local storage fallback directly if API failed
+        const localUser = authService.getUserData();
+        if (localUser) {
+          setBuyerInfo(prev => ({
+            ...prev,
+            name: localUser.name || prev.name,
+            email: localUser.email || prev.email,
+            phone: localUser.phone || (localUser as any).phoneNumber || prev.phone
+          }));
+        }
+      }
+    };
+    fetchUserProfile();
+  }, []);
+
   // Get dynamic data from DetailProduk
-  const stateData = location.state || {};
+  const rawLocationState = location.state || {};
+
+  // Memoize localStorage helper to avoid recreating function
+  const getStoredCheckout = useMemo(() => {
+    return () => {
+      try {
+        return JSON.parse(localStorage.getItem('checkout_state') || 'null');
+      } catch (e) {
+        return null;
+      }
+    };
+  }, []);
+
+  const storedCheckout = getStoredCheckout();
+  const stateData = { ...(storedCheckout || {}), ...(rawLocationState || {}) };
+
+  // Persist latest location state to localStorage so other flows (e.g., failed -> back) can recover product data
+  useEffect(() => {
+    if (rawLocationState && Object.keys(rawLocationState).length) {
+      try {
+        const merged = { ...(getStoredCheckout() || {}), ...rawLocationState };
+        localStorage.setItem('checkout_state', JSON.stringify(merged));
+      } catch (e) {
+        // ignore storage errors
+      }
+    }
+  }, [rawLocationState, getStoredCheckout]);
 
   // Sanitize product name (remove HTML entities and decode)
   const sanitizeProductName = (name: string) => {
@@ -41,7 +101,7 @@ const Payment = () => {
   };
 
   // ================= DATA CART =================
-  const cartItems = [
+  const cartItems = stateData.items || [
     {
       id: 1,
       name: sanitizeProductName(stateData.productName) || 'Judul Produk',
@@ -104,105 +164,14 @@ const Payment = () => {
     return isValid;
   };
 
-  const paymentMethods = [
-    {
-      id: "qris",
-      name: "QRIS",
-      category: "Instant Payment",
-      logo: "https://images.seeklogo.com/logo-png/39/2/quick-response-code-indonesia-standard-qris-logo-png_seeklogo-391791.png",
-    },
-    {
-      id: "permata",
-      name: "Permata Bank",
-      category: "Virtual Account",
-      logo: "https://images.seeklogo.com/logo-png/62/2/permata-bank-logo-png_seeklogo-621707.png",
-    },
-    {
-      id: "bca",
-      name: "BCA",
-      category: "Virtual Account",
-      logo: "https://images.seeklogo.com/logo-png/1/2/bank-central-asia-logo-png_seeklogo-16269.png",
-    },
-    {
-      id: "bsi",
-      name: "Bank Syariah Indonesia",
-      category: "Virtual Account",
-      logo: "https://images.seeklogo.com/logo-png/40/2/bank-syariah-indonesia-logo-png_seeklogo-400984.png",
-    },
-    {
-      id: "bri",
-      name: "BRI",
-      category: "Virtual Account",
-      logo: "https://images.seeklogo.com/logo-png/30/2/bank-bri-bank-rakyat-logo-png_seeklogo-304232.png",
-    },
-    {
-      id: "mandiri",
-      name: "Bank Mandiri",
-      category: "Virtual Account",
-      logo: "https://images.seeklogo.com/logo-png/1/2/bank-mandiri-logo-png_seeklogo-16290.png",
-    },
-    {
-      id: "bni",
-      name: "BNI",
-      category: "Virtual Account",
-      logo: "https://images.seeklogo.com/logo-png/1/2/bank-negara-indonesia-logo-png_seeklogo-16298.png",
-    },
-    {
-      id: "mandiri_va",
-      name: "Mandiri Virtual Account",
-      category: "Virtual Account",
-      logo: "https://images.seeklogo.com/logo-png/1/2/bank-mandiri-logo-png_seeklogo-16290.png",
-    },
-    {
-      id: "muamalat",
-      name: "Bank Muamalat",
-      category: "Virtual Account",
-      logo: "https://images.seeklogo.com/logo-png/1/2/bank-muamalat-logo-png_seeklogo-16296.png",
-    },
-    {
-      id: "cimb",
-      name: "CIMB Niaga",
-      category: "Virtual Account",
-      logo: "https://images.seeklogo.com/logo-png/3/2/cimb-bank-logo-png_seeklogo-30387.png",
-    },
-    {
-      id: "sinarmas",
-      name: "Bank Sinarmas",
-      category: "Virtual Account",
-      logo: "https://images.seeklogo.com/logo-png/34/2/sinarmas-sekuritas-logo-png_seeklogo-347098.png",
-    },
-    {
-      id: "bnc",
-      name: "Bank Neo Commerce",
-      category: "Virtual Account",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Bank_Neo_Commerce.png/250px-Bank_Neo_Commerce.png",
-    },
-    {
-      id: "maybank",
-      name: "Maybank",
-      category: "Virtual Account",
-      logo: "https://images.seeklogo.com/logo-png/42/2/maybank-logo-png_seeklogo-429135.png",
-    },
-    {
-      id: "indomaret",
-      name: "Indomaret",
-      category: "Other",
-      logo: "https://images.seeklogo.com/logo-png/33/1/indomaret-logo-png_seeklogo-339890.png",
-    },
-    {
-      id: "alfamart",
-      name: "Alfamart",
-      category: "Other",
-      logo: "https://images.seeklogo.com/logo-png/33/2/alfamart-logo-png_seeklogo-339891.png",
-    },
-  ];
+
 
   // ================= CALCULATION =================
   const calculateSubtotal = () =>
-    cartItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
+    cartItems.reduce((sum: number, item: any) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
 
   const calculateAddOns = () =>
-    addOns.reduce((sum: number, a: any) => sum + a.price, 0);
+    addOns.reduce((sum: number, a: any) => sum + (Number(a.price) || 0), 0);
 
   const discount = 0;
 
@@ -238,6 +207,7 @@ const Payment = () => {
       if (selectedPayment === "qris") {
         navigate("/qris", {
           state: {
+            ...stateData, // Pass original product data
             amount: totalPrice,
             email: buyerInfo.email,
             name: buyerInfo.name,
@@ -261,6 +231,7 @@ const Payment = () => {
       if (virtualAccountMethods.includes(selectedPayment)) {
         navigate("/virtual-account", {
           state: {
+            ...stateData, // Pass original product data
             amount: totalPrice,
             email: buyerInfo.email,
             name: buyerInfo.name,
@@ -278,6 +249,7 @@ const Payment = () => {
       if (minimarketMethods.includes(selectedPayment)) {
         navigate("/minimarket-payment", {
           state: {
+            ...stateData, // Pass original product data
             amount: totalPrice,
             email: buyerInfo.email,
             name: buyerInfo.name,
@@ -458,35 +430,48 @@ const Payment = () => {
 
             {/* PAYMENT PICKER - Desktop Style */}
             <div className="hidden lg:block bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl p-8 border border-gray-100">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <CreditCard className="w-6 h-6 text-purple-600" />
                   <h3 className="text-xl font-bold text-gray-800">
                     Metode Pembayaran
                   </h3>
                 </div>
-
-                <button
-                  onClick={() => setOpenPopup(true)}
-                  className="px-4 py-2 bg-purple-100 text-purple-700 rounded-xl hover:bg-purple-200 transition"
-                >
-                  Pilih
-                </button>
               </div>
 
-              {selectedPayment && (
-                <div className="mt-4 p-4 rounded-xl bg-purple-50 border border-purple-200 flex items-center gap-3">
-                  <img
-                    src={paymentMethods.find(m => m.id === selectedPayment)?.logo}
-                    alt={paymentMethods.find(m => m.id === selectedPayment)?.name}
-                    className="h-6 object-contain"
-                  />
-                  <span className="font-semibold text-purple-700 flex-1">
-                    {paymentMethods.find(m => m.id === selectedPayment)?.name}
+              {/* Selected Method Display */}
+              {selectedPayment ? (
+                <div className="flex items-center p-4 rounded-xl border-2 border-purple-500 bg-purple-50 mb-4 transition-all shadow-sm">
+                  <div className="w-12 h-8 flex items-center justify-center mr-4 bg-white rounded-lg border border-gray-100 p-1">
+                    <img
+                      src={paymentMethods.find((m) => m.id === selectedPayment)?.logo}
+                      alt="Selected"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <span className="font-semibold text-gray-700 flex-1">
+                    {paymentMethods.find((m) => m.id === selectedPayment)?.name}
                   </span>
-                  <CheckCircle2 className="text-purple-600" />
+                  <div className="bg-purple-600 text-white text-xs px-2 py-1 rounded-full font-medium">
+                    Terpilih
+                  </div>
+                </div>
+              ) : (
+                <div className="p-6 text-center border-2 border-dashed border-gray-200 rounded-xl mb-4 bg-gray-50/50">
+                  <p className="text-gray-400 text-sm font-medium">Belum ada metode pembayaran yang dipilih</p>
                 </div>
               )}
+
+              {/* Open Popup Button */}
+              <button
+                onClick={() => setOpenPopup(true)}
+                className={`w-full py-3 text-sm font-semibold rounded-xl transition-all border ${selectedPayment
+                  ? "text-purple-600 bg-white border-purple-200 hover:bg-purple-50 hover:border-purple-300"
+                  : "text-white bg-purple-600 hover:bg-purple-700 border-transparent shadow-lg shadow-purple-200"
+                  }`}
+              >
+                {selectedPayment ? "Ganti Metode Pembayaran" : "Pilih Metode Pembayaran"}
+              </button>
             </div>
 
             {/* PAYMENT PICKER - Mobile Style */}
@@ -557,7 +542,7 @@ const Payment = () => {
               </div>
 
               <div className="p-4 lg:p-6 space-y-4">
-                {cartItems.map((item) => (
+                {cartItems.map((item: any) => (
                   <div key={item.id} className="flex gap-3 lg:gap-4 p-3 lg:p-4 rounded-2xl bg-gradient-to-br from-pink-50 to-purple-50 border border-pink-100">
                     <div className="w-16 h-16 lg:w-20 lg:h-20 bg-white rounded-xl flex items-center justify-center text-3xl lg:text-4xl shadow-sm overflow-hidden">
                       {(item.image && (item.image.startsWith('http') || item.image.startsWith('data:') || item.image.startsWith('/'))) ? (

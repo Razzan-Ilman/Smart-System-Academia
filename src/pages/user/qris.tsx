@@ -15,7 +15,7 @@ const QRISPayment = () => {
   const stateData = location.state || {};
 
   const [paymentStatus, setPaymentStatus] = useState('pending');
-  const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(1 * 60); // 1 minute in seconds
   const [copied, setCopied] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
@@ -72,6 +72,7 @@ const QRISPayment = () => {
       setTimeout(() => {
         navigate('/payment-failed', {
           state: {
+            ...location.state, // Preserve original state
             orderId: orderNumber,
             amount: totalAmount,
             email: buyerEmail,
@@ -95,7 +96,7 @@ const QRISPayment = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, navigate, orderNumber, totalAmount, buyerEmail, buyerName, buyerPhone]);
+  }, [timeLeft, navigate, orderNumber, totalAmount, buyerEmail, buyerName, buyerPhone, location.state]);
 
   // Format time
   const formatTime = (seconds: number): string => {
@@ -123,7 +124,7 @@ const QRISPayment = () => {
   // Handle back navigation
   const handleBack = () => {
     if (confirm('Apakah Anda yakin ingin membatalkan pembayaran?')) {
-      navigate('/payment');
+      navigate('/payment', { state: location.state });
     }
   };
 
@@ -148,6 +149,7 @@ const QRISPayment = () => {
         setTimeout(() => {
           navigate('/payment-success', {
             state: {
+              ...location.state,
               orderId: orderNumber,
               amount: totalAmount,
               email: buyerEmail,
@@ -175,6 +177,7 @@ const QRISPayment = () => {
 
         navigate('/payment-success', {
           state: {
+            ...location.state,
             orderId: orderNumber,
             amount: totalAmount,
             email: buyerEmail,
@@ -202,7 +205,7 @@ const QRISPayment = () => {
 
   const handleCancelPayment = () => {
     setShowCancelModal(false);
-    navigate('/payment', { replace: true });
+    navigate('/payment', { replace: true, state: location.state });
   };
 
   // Automatic polling disabled because backend uses confirmation flow
@@ -251,82 +254,105 @@ const QRISPayment = () => {
             </div>
           </div>
 
-          {/* QR Code Section */}
-          <div className="p-8">
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-8 mb-6 flex justify-center">
-              <div className="bg-white rounded-xl p-6 shadow-lg">
-                {/* QR Code - Real from API */}
-                <div className="w-64 h-64 bg-white flex items-center justify-center border-4 border-gray-200 rounded-lg">
+          {/* Unified Payment Ticket Section */}
+          <div className="p-4 md:p-8 flex flex-col items-center w-full">
+
+            {/* Payment Ticket Card */}
+            <div className="bg-white rounded-3xl shadow-xl border border-gray-200 w-full max-w-md overflow-hidden relative">
+
+              {/* Top Section: QR Code */}
+              <div className="p-6 md:p-8 flex flex-col items-center bg-white">
+                {/* QRIS Logo */}
+                <div className="mb-4">
+                  <img
+                    src="/payment/qris.png"
+                    alt="QRIS"
+                    className="h-10 object-contain"
+                    onError={(e) => e.currentTarget.style.display = 'none'}
+                  />
+                </div>
+
+                {/* QR Code */}
+                <div className="p-2 border-2 border-gray-100 rounded-xl mb-2">
                   {qrCodeUrl ? (
-                    // Display QR from image URL
                     <img
                       src={qrCodeUrl}
                       alt="QRIS Payment"
-                      className="w-full h-full object-contain"
+                      className="w-80 h-80 object-contain"
                       onError={(e) => {
                         console.error('Failed to load QR image');
                         e.currentTarget.style.display = 'none';
                       }}
                     />
                   ) : qrCodeString ? (
-                    // Generate QR from string
                     <QRCodeSVG
                       value={qrCodeString}
-                      size={256}
+                      size={320}
                       level="H"
-                      includeMargin={false}
+                      includeMargin={true}
                     />
                   ) : (
-                    // Fallback: No QR available
-                    <div className="flex flex-col items-center justify-center text-center p-4">
+                    <div className="w-80 h-80 flex flex-col items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
                       <QrCode className="w-16 h-16 text-gray-300 mb-2" />
-                      <p className="text-sm text-gray-500">QR Code tidak tersedia</p>
-                      <p className="text-xs text-gray-400 mt-1">Silakan hubungi customer service</p>
+                      <p className="text-sm text-center text-gray-400">QR Code tidak tersedia</p>
                     </div>
                   )}
                 </div>
 
-                <div className="text-center mt-4">
-                  <p className="text-sm text-gray-600 mb-2">Nomor Pesanan</p>
-                  <div className="flex items-center justify-center gap-2 bg-gray-50 px-4 py-2 rounded-lg">
-                    <code className="font-mono font-semibold text-gray-800">{orderNumber}</code>
-                    <button
-                      onClick={handleCopy}
-                      className="p-1 hover:bg-gray-200 rounded transition"
-                      title="Copy order number"
-                    >
-                      {copied ? (
-                        <CheckCircle2 className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <Copy className="w-4 h-4 text-gray-600" />
-                      )}
-                    </button>
+                {/* NMID */}
+                <div className="text-center w-full mt-2">
+                  <p className="text-xs font-bold text-gray-900">SMART ACADEMIA</p>
+                  <p className="text-[10px] text-gray-500 font-mono">NMID: ID2021064013547</p>
+                </div>
+              </div>
+
+              {/* TICKET CUTOUT EFFECT */}
+              <div className="relative flex items-center w-full">
+                <div className="h-6 w-6 bg-indigo-50 rounded-full absolute -left-3 shadow-inner border-r border-gray-200"></div>
+                <div className="h-px w-full border-t-2 border-dashed border-gray-200"></div>
+                <div className="h-6 w-6 bg-indigo-50 rounded-full absolute -right-3 shadow-inner border-l border-gray-200"></div>
+              </div>
+
+              {/* Bottom Section: Details */}
+              <div className="p-6 md:p-8 bg-gray-50/50">
+                {/* Amount */}
+                <div className="text-center mb-6">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Total Pembayaran</p>
+                  <h2 className="text-3xl font-black text-gray-900 tracking-tight">
+                    {formatRupiah(totalAmount)}
+                  </h2>
+                </div>
+
+                {/* Order ID Box */}
+                <div className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-gray-200 shadow-sm gap-3 mb-4">
+                  <div className="flex flex-col overflow-hidden">
+                    <span className="text-[10px] text-gray-400 font-bold uppercase">Nomor Pesanan</span>
+                    <code className="font-mono font-bold text-gray-800 text-sm truncate">
+                      {orderNumber}
+                    </code>
                   </div>
+                  <button
+                    onClick={handleCopy}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-blue-600"
+                    title="Salin Nomor Pesanan"
+                  >
+                    {copied ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <Copy className="w-5 h-5" />
+                    )}
+                  </button>
                 </div>
+
+                {/* Buyer Info - Compact Mode */}
+                {buyerName && (
+                  <div className="text-xs text-gray-500 text-center border-t border-gray-200 pt-3 mt-2">
+                    <p>Pembeli: <span className="font-medium text-gray-800">{buyerName}</span></p>
+                    {buyerEmail && <p className="truncate opacity-75">{buyerEmail}</p>}
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* Amount */}
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 mb-6 border border-purple-100">
-              <div className="text-center">
-                <p className="text-sm text-gray-600 mb-2">Total Pembayaran</p>
-                <p className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  {formatRupiah(totalAmount)}
-                </p>
-              </div>
-            </div>
-
-            {/* Buyer Info (if available) */}
-            {buyerName && (
-              <div className="bg-gray-50 rounded-2xl p-4 mb-6 border border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-600 mb-2">Informasi Pembeli:</h3>
-                <div className="space-y-1 text-sm text-gray-700">
-                  <p><span className="font-medium">Nama:</span> {buyerName}</p>
-                  {buyerEmail && <p><span className="font-medium">Email:</span> {buyerEmail}</p>}
-                  {buyerPhone && <p><span className="font-medium">Telepon:</span> {buyerPhone}</p>}
-                </div>
-              </div>
-            )}
 
             {/* Instructions */}
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6">
@@ -414,18 +440,7 @@ const QRISPayment = () => {
               </div>
             )}
 
-            {/* Support Link */}
-            <div className="text-center mb-6">
-              <p className="text-sm text-gray-500 mb-2">Punya kendala pembayaran?</p>
-              <a
-                href={`https://wa.me/6281234567890?text=Halo%2C%20saya%20punya%20kendala%20pembayaran%20dengan%20nomor%20pesanan%20${orderNumber}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-700 underline underline-offset-4"
-              >
-                Hubungi Customer Service kami via WhatsApp
-              </a>
-            </div>
+
 
             {/* Cancel Payment Button */}
             <button

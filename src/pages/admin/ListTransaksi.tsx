@@ -14,8 +14,9 @@ import {
   type Transaction
 } from "../../services/transactionService";
 import { formatRupiah } from "../../utils/transactionUtils";
+import Pagination from "../../components/admin/Pagination";
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 10;
 
 // Helper to format Status (Updated with Auto-Fail Logic)
 const normalizeStatus = (status?: string, createdAt?: string) => {
@@ -47,11 +48,12 @@ export function ListTransaksi() {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [error, setError] = useState<string | null>(null); // Original state, keeping it.
+  const [totalItems, setTotalItems] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
-    setError(null); // Reset error on new fetch
+    setError(null);
 
     try {
       const response = await getTransactionHistory(
@@ -73,8 +75,12 @@ export function ListTransaksi() {
       }
 
       setTransactions(txList);
-      const respAny = response as any;
-      setTotalPages(response?.data?.pagination?.totalPages || respAny?.pagination?.totalPages || 1);
+
+      // Extract pagination properly
+      const pagination = response?.data?.pagination || (response as any)?.pagination;
+      setTotalPages(pagination?.totalPages || 1);
+      setTotalItems(pagination?.total || txList.length);
+
     } catch (err: any) {
       console.error("❌ Error fetching transactions:", err);
       setError(err.response?.data?.message || "Gagal memuat data transaksi");
@@ -199,6 +205,8 @@ export function ListTransaksi() {
                 <option value="qris">QRIS</option>
                 <option value="va">Virtual Account</option>
                 <option value="ewallet">E-Wallet</option>
+                <option value="indomaret">Indomaret</option>
+                <option value="alfamart">Alfamart</option>
               </select>
             </div>
           </div>
@@ -272,7 +280,9 @@ export function ListTransaksi() {
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-bold inline-block min-w-[80px] ${statusColor}`}
                           >
-                            {statusNormalized}
+                            {statusNormalized === "Success" ? "Berhasil" :
+                              statusNormalized === "Pending" ? "Menunggu" :
+                                statusNormalized === "Failed" ? "Gagal" : statusNormalized}
                           </span>
                         </td>
                         <td className="py-4 px-4 text-center">
@@ -314,54 +324,14 @@ export function ListTransaksi() {
         {/* Pagination Details */}
         <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4">
           <div className="text-sm text-gray-500">
-            Menampilkan {filteredTransactions.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} - {Math.min(currentPage * ITEMS_PER_PAGE, (currentPage - 1) * ITEMS_PER_PAGE + filteredTransactions.length)} dari Total Transaksi
+            Menampilkan {filteredTransactions.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} - {Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} dari {totalItems} Transaksi
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex gap-2 items-center">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1.5 md:px-4 md:py-2 border border-blue-200 rounded-lg text-sm font-medium text-blue-600 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed hover:bg-blue-50 transition"
-              >
-                Sebelumnya
-              </button>
-
-              {/* Page Numbers */}
-              <div className="hidden md:flex gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum = i + 1;
-                  // Simple sliding window logic or just limit to first 5 for now to prevent overflow
-                  if (totalPages > 5 && currentPage > 3) {
-                    pageNum = currentPage - 2 + i;
-                    if (pageNum > totalPages) return null;
-                  }
-
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg text-sm font-medium transition
-                        ${currentPage === pageNum
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "text-gray-600 hover:bg-gray-100 border border-gray-200"
-                        }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                }).filter(Boolean)}
-              </div>
-
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1.5 md:px-4 md:py-2 border border-blue-200 rounded-lg text-sm font-medium text-blue-600 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed hover:bg-blue-50 transition"
-              >
-                Selanjutnya
-              </button>
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
     </div>

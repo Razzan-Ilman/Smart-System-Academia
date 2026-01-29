@@ -43,75 +43,75 @@ const VirtualAccount = () => {
 
   // Bank info
   const bankInfo = {
-    bca: { 
-      name: 'BCA', 
-      color: 'from-blue-600 to-blue-700', 
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/320px-Bank_Central_Asia.svg.png' 
+    bca: {
+      name: 'BCA',
+      color: 'from-blue-600 to-blue-700',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/320px-Bank_Central_Asia.svg.png'
     },
-    mandiri: { 
-      name: 'Bank Mandiri', 
-      color: 'from-yellow-500 to-orange-600', 
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/320px-Bank_Mandiri_logo_2016.svg.png' 
+    mandiri: {
+      name: 'Bank Mandiri',
+      color: 'from-yellow-500 to-orange-600',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/320px-Bank_Mandiri_logo_2016.svg.png'
     },
-    bri: { 
-      name: 'BRI', 
-      color: 'from-blue-500 to-blue-600', 
-      logo: '/payment/BRI.jpeg' 
+    bri: {
+      name: 'BRI',
+      color: 'from-blue-500 to-blue-600',
+      logo: '/payment/BRI.jpeg'
     },
-    bni: { 
-      name: 'BNI', 
-      color: 'from-orange-500 to-orange-600', 
-      logo: 'https://upload.wikimedia.org/wikipedia/id/thumb/5/55/BNI_logo.svg/320px-BNI_logo.svg.png' 
+    bni: {
+      name: 'BNI',
+      color: 'from-orange-500 to-orange-600',
+      logo: 'https://upload.wikimedia.org/wikipedia/id/thumb/5/55/BNI_logo.svg/320px-BNI_logo.svg.png'
     },
-    permata: { 
-      name: 'Permata Bank', 
-      color: 'from-green-600 to-green-700', 
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Bank_Permata_logo.svg/320px-Bank_Permata_logo.svg.png' 
+    permata: {
+      name: 'Permata Bank',
+      color: 'from-green-600 to-green-700',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Bank_Permata_logo.svg/320px-Bank_Permata_logo.svg.png'
     },
-    bsi: { 
-      name: 'Bank Syariah Indonesia', 
-      color: 'from-teal-600 to-teal-700', 
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Bank_Syariah_Indonesia.svg/320px-Bank_Syariah_Indonesia.svg.png' 
+    bsi: {
+      name: 'Bank Syariah Indonesia',
+      color: 'from-teal-600 to-teal-700',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Bank_Syariah_Indonesia.svg/320px-Bank_Syariah_Indonesia.svg.png'
     },
-    cimb: { 
-      name: 'CIMB Niaga', 
-      color: 'from-red-600 to-red-700', 
-      logo: '/payment/CIMB_Niaga.jpeg' 
+    cimb: {
+      name: 'CIMB Niaga',
+      color: 'from-red-600 to-red-700',
+      logo: '/payment/CIMB_Niaga.jpeg'
     },
-    sinarmas: { 
-      name: 'Bank Sinarmas', 
-      color: 'from-red-500 to-red-600', 
-      logo: '/payment/Bank_Sinarmas.jpeg' 
+    sinarmas: {
+      name: 'Bank Sinarmas',
+      color: 'from-red-500 to-red-600',
+      logo: '/payment/Bank_Sinarmas.jpeg'
     },
-    muamalat: { 
-      name: 'Bank Muamalat', 
-      color: 'from-purple-700 to-purple-800', 
-      logo: '/payment/Bank_Muamalat.jpeg' 
+    muamalat: {
+      name: 'Bank Muamalat',
+      color: 'from-purple-700 to-purple-800',
+      logo: '/payment/Bank_Muamalat.jpeg'
     },
-    bnc: { 
-      name: 'Bank Neo Commerce', 
-      color: 'from-yellow-400 to-yellow-500', 
-      logo: '/payment/Bank_Neo_Commerce.jpeg' 
+    bnc: {
+      name: 'Bank Neo Commerce',
+      color: 'from-yellow-400 to-yellow-500',
+      logo: '/payment/Bank_Neo_Commerce.jpeg'
     },
-    maybank: { 
-      name: 'Maybank', 
-      color: 'from-yellow-500 to-yellow-600', 
-      logo: '/payment/MayBank.jpeg' 
+    maybank: {
+      name: 'Maybank',
+      color: 'from-yellow-500 to-yellow-600',
+      logo: '/payment/MayBank.jpeg'
     },
-    indomaret: { 
-      name: 'Indomaret', 
-      color: 'from-blue-600 to-red-600', 
-      logo: '/payment/Indomaret.jpeg' 
+    indomaret: {
+      name: 'Indomaret',
+      color: 'from-blue-600 to-red-600',
+      logo: '/payment/Indomaret.jpeg'
     },
-    alfamart: { 
-      name: 'Alfamart', 
-      color: 'from-red-600 to-red-700', 
-      logo: '/payment/Alfamart.jpeg' 
+    alfamart: {
+      name: 'Alfamart',
+      color: 'from-red-600 to-red-700',
+      logo: '/payment/Alfamart.jpeg'
     },
-    default: { 
-      name: 'Virtual Account', 
-      color: 'from-purple-600 to-pink-600', 
-      logo: '' 
+    default: {
+      name: 'Virtual Account',
+      color: 'from-purple-600 to-pink-600',
+      logo: ''
     }
   };
 
@@ -122,9 +122,9 @@ const VirtualAccount = () => {
     let initialSeconds = 24 * 60 * 60;
 
     if (transactionData) {
-      const expiryString = 
-        transactionData.expiry_time || 
-        transactionData.expired_at || 
+      const expiryString =
+        transactionData.expiry_time ||
+        transactionData.expired_at ||
         transactionData.expiry_date ||
         transactionData.payment_data?.expiry_time;
 
@@ -185,10 +185,10 @@ const VirtualAccount = () => {
       const result = await checkPaymentAPI(orderId);
 
       // ✅ Normalisasi status dari berbagai kemungkinan response
-      const status = 
-        result?.data?.payment_status || 
-        result?.data?.status || 
-        result?.payment_status || 
+      const status =
+        result?.data?.payment_status ||
+        result?.data?.status ||
+        result?.payment_status ||
         result?.status;
 
       const statusLower = (status || '').toLowerCase();
@@ -196,7 +196,7 @@ const VirtualAccount = () => {
       if (['paid', 'success', 'settlement', 'completed'].includes(statusLower)) {
         setPaymentStatus('success');
         toast.success('Pembayaran berhasil! 🎉');
-        
+
         setTimeout(() => {
           navigate('/payment-success', {
             state: {
@@ -213,10 +213,12 @@ const VirtualAccount = () => {
       } else if (['failed', 'expired', 'cancel', 'cancelled', 'expire'].includes(statusLower)) {
         setPaymentStatus('failed');
         toast.error('Pembayaran gagal atau kadaluarsa ❌');
-        
+
+
         setTimeout(() => {
           navigate('/payment-failed', {
             state: {
+              ...location.state, // Preserve original state
               orderId,
               amount,
               paymentMethod: currentBank.name,
@@ -231,7 +233,7 @@ const VirtualAccount = () => {
     } catch (error: any) {
       console.error('❌ Check status error:', error);
       setPaymentStatus('pending');
-      
+
       // Hanya tampilkan error jika bukan auto-check
       if (document.activeElement?.id === 'btn-check-status') {
         const errorMsg = error.response?.data?.message || 'Gagal memeriksa status pembayaran';
@@ -264,16 +266,21 @@ const VirtualAccount = () => {
   const handleCancelPayment = () => {
     setShowCancelModal(false);
     toast.info('Pembayaran dibatalkan');
-    navigate('/payment', { replace: true });
+    // Navigate back with original state to preserve product info
+    navigate('/payment', {
+      replace: true,
+      state: location.state
+    });
   };
 
   // ✅ Redirect jika tidak ada data
   useEffect(() => {
     if (!orderId || !amount) {
       toast.error('Data pembayaran tidak valid');
-      navigate('/payment', { replace: true });
+      // Preserve original checkout state when redirecting back
+      navigate('/payment', { replace: true, state: location.state });
     }
-  }, [orderId, amount, navigate]);
+  }, [orderId, amount, navigate, location.state]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-100 relative overflow-hidden">

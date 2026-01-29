@@ -1,12 +1,6 @@
 import React from "react";
 import { CreditCard, CheckCircle2, X } from "lucide-react";
-
-type PaymentMethodType = {
-  id: string;
-  name: string;
-  category: string;
-  logo: string;
-};
+import { type PaymentMethodType } from "../../constants/paymentMethods";
 
 type Props = {
   open: boolean;

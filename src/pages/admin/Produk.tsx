@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ShoppingOutlined,
@@ -12,6 +12,7 @@ import ConfirmModal from "../../components/admin/ConfirmModal";
 import { productService } from "../../services/productService"; // pakai service baru
 import type { Product as APIProduct } from "../../services/productService";
 import { useDebounce } from "../../hooks/useDebounce";
+import Pagination from "../../components/admin/Pagination";
 
 interface Product {
   id: string;
@@ -24,7 +25,7 @@ interface Product {
   stock: number;
 }
 
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 10;
 
 export default function AdminProduk() {
   const navigate = useNavigate();
@@ -34,6 +35,8 @@ export default function AdminProduk() {
   const [showFilter, setShowFilter] = useState(false);
   const [sortType, setSortType] = useState<string>("Default");
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   // Debounce search to reduce API calls
   const debouncedSearch = useDebounce(search, 500);
@@ -45,15 +48,48 @@ export default function AdminProduk() {
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [currentPage, debouncedSearch, sortType]);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const data = await productService.getAll();
 
-      const transformedProducts = data.map((product: APIProduct) => {
-        // ambil image utama -> fallback ke images[0] -> fallback placeholder
+      // Map sortType to backend params
+      let sortBy: string | undefined = undefined;
+      let order: 'asc' | 'desc' | undefined = undefined;
+
+      switch (sortType) {
+        case "Harga Terendah":
+          sortBy = "price";
+          order = "asc";
+          break;
+        case "Harga Tertinggi":
+          sortBy = "price";
+          order = "desc";
+          break;
+        case "Terbaru":
+          sortBy = "created_at";
+          order = "desc";
+          break;
+        case "Terlama":
+          sortBy = "created_at";
+          order = "asc";
+          break;
+        default:
+          sortBy = undefined;
+          order = undefined;
+      }
+
+      const result = await productService.getPaginated(
+        currentPage,
+        ITEMS_PER_PAGE,
+        debouncedSearch,
+        undefined, // category_id not used in this view
+        sortBy,
+        order
+      );
+
+      const transformedProducts = result.data.map((product: APIProduct) => {
         const imageUrl =
           product.image?.trim() ||
           product.images?.[0]?.trim() ||
@@ -75,6 +111,10 @@ export default function AdminProduk() {
       });
 
       setProducts(transformedProducts);
+      const calculatedTotalPages = Math.ceil(result.total / ITEMS_PER_PAGE);
+      setTotalPages(calculatedTotalPages || 1);
+      setTotalItems(result.total);
+
     } catch (error) {
       console.error("Failed to fetch products:", error);
       toast.error("Gagal memuat produk");
@@ -94,7 +134,8 @@ export default function AdminProduk() {
     try {
       setDeleting(true);
       await productService.delete(productToDelete);
-      setProducts(products.filter((p) => p.id !== productToDelete));
+      // Refresh list after delete
+      fetchProducts();
       toast.success("Produk berhasil dihapus");
       setIsDeleteModalOpen(false);
       setProductToDelete(null);
@@ -106,28 +147,6 @@ export default function AdminProduk() {
     }
   };
 
-  // Filter & Sort with memoization for performance
-  const filteredAndSortedProducts = useMemo(() => {
-    return products
-      .filter((p) => p.title.toLowerCase().includes(debouncedSearch.toLowerCase()))
-      .sort((a, b) => {
-        if (sortType === "Harga Terendah") return a.priceValue - b.priceValue;
-        if (sortType === "Harga Tertinggi") return b.priceValue - a.priceValue;
-        if (sortType === "Terbaru")
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
-        if (sortType === "Terlama")
-          return new Date(a.date).getTime() - new Date(b.date).getTime();
-        return 0;
-      });
-  }, [products, debouncedSearch, sortType]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredAndSortedProducts.length / ITEMS_PER_PAGE);
-  const paginatedProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    return filteredAndSortedProducts.slice(startIndex, endIndex);
-  }, [filteredAndSortedProducts, currentPage]);
 
   // Reset to page 1 when search or filter changes
   useEffect(() => {
@@ -230,8 +249,8 @@ export default function AdminProduk() {
             <div className="col-span-1 text-center">Hapus</div>
           </div>
 
-          {paginatedProducts.length > 0 ? (
-            paginatedProducts.map((item, index) => {
+          {products.length > 0 ? (
+            products.map((item, index) => {
               const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index + 1;
               return (
                 <div
@@ -282,8 +301,8 @@ export default function AdminProduk() {
 
         {/* Mobile Card */}
         <div className="lg:hidden space-y-3">
-          {paginatedProducts.length > 0 ? (
-            paginatedProducts.map((item, index) => {
+          {products.length > 0 ? (
+            products.map((item, index) => {
               const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index + 1;
               return (
                 <div
@@ -336,52 +355,11 @@ export default function AdminProduk() {
         </div>
 
         {/* Pagination Controls */}
-        {filteredAndSortedProducts.length > ITEMS_PER_PAGE && (
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-gray-600">
-              Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredAndSortedProducts.length)} dari {filteredAndSortedProducts.length} produk
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm"
-              >
-                Previous
-              </button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(page => {
-                    // Show first, last, current, and adjacent pages
-                    return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
-                  })
-                  .map((page, idx, arr) => (
-                    <div key={page} className="flex items-center gap-1">
-                      {idx > 0 && arr[idx - 1] !== page - 1 && (
-                        <span className="px-2 text-gray-400">...</span>
-                      )}
-                      <button
-                        onClick={() => setCurrentPage(page)}
-                        className={`w-10 h-10 rounded-lg font-medium transition text-sm ${currentPage === page
-                          ? 'bg-blue-600 text-white'
-                          : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
-                      >
-                        {page}
-                      </button>
-                    </div>
-                  ))}
-              </div>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       <ConfirmModal

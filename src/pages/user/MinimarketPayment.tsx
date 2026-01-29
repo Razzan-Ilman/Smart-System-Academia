@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Copy, Check, AlertCircle, RefreshCw, ChevronLeft, Info, ReceiptText, Clock, ShieldCheck, MapPin } from 'lucide-react';
+import Barcode from 'react-barcode';
+import { toast } from 'sonner';
+import { checkPaymentStatus } from '../../services/transactionService';
 import Navbar from '../../components/user/Navbar';
 
 const MinimarketPayment = () => {
@@ -12,14 +15,26 @@ const MinimarketPayment = () => {
     const [showCancelModal, setShowCancelModal] = useState(false);
 
     // Data from payment page
-    const { amount, email, name, phone, orderId, paymentMethod } = location.state || {};
+    const { amount, email, name, orderId, paymentMethod, transactionData } = location.state || {}; // Ensure transactionData is destructured
 
-    // Stable Payment Code based on orderId
+    // Stable Payment Code based on transaction data or orderId
     const paymentCode = useMemo(() => {
+        // Try to get code from transaction data first (adjust keys based on actual API response)
+        const codeFromApi =
+            transactionData?.payment_code ||
+            transactionData?.pay_code ||
+            transactionData?.bill_key ||
+            transactionData?.data?.payment_code ||
+            transactionData?.data?.pay_code ||
+            transactionData?.virtual_account_number; // Sometimes VA number is used for conveniences
+
+        if (codeFromApi) return codeFromApi;
+
+        // Fallback to Order ID based generation if no code is found
         if (!orderId) return `PAY${Math.floor(1000000000 + Math.random() * 9000000000)}`;
         const seed = orderId.split('-').pop() || '0';
         return `PAY${seed.slice(-8)}${seed.slice(0, 2)}`;
-    }, [orderId]);
+    }, [orderId, transactionData]);
 
     const storeInfo = {
         indomaret: {
@@ -77,19 +92,61 @@ const MinimarketPayment = () => {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const handleCheckStatus = () => {
+    const handleCheckStatus = async () => {
+        if (!orderId) {
+            toast.error("Order ID tidak ditemukan");
+            return;
+        }
+
         setIsChecking(true);
-        setTimeout(() => {
+        try {
+            const statusResult = await checkPaymentStatus(orderId);
+            const status = statusResult?.data?.status || statusResult?.status;
+
+            console.log("Check Status Result:", statusResult);
+
+            if (status === 'settlement' || status === 'success' || status === 'paid') {
+                toast.success("Pembayaran berhasil!");
+                navigate('/payment-success', {
+                    state: {
+                        orderId,
+                        amount,
+                        paymentMethod: currentStore.name,
+                        name,
+                        email,
+                        items: location.state?.items || [],
+                        productLink: location.state?.productLink
+                    }
+                });
+            } else if (status === 'pending') {
+                toast.info("Pembayaran belum terdeteksi. Silakan coba lagi setelah membayar.", {
+                    description: "Pastikan Anda sudah menyelesaikan pembayaran di kasir."
+                });
+            } else if (status === 'expire' || status === 'cancel') {
+                toast.error("Pembayaran kadaluarsa atau dibatalkan.");
+            } else {
+                toast.warning(`Status pembayaran: ${status || 'Unknown'}`);
+            }
+
+        } catch (error) {
+            console.error("Failed to check status:", error);
+            // Fallback for demo purposes if backend isn't 100% ready or during dev
+            // toast.error("Gagal mengecek status pembayaran"); 
+
+            // OPTIONAL: Keep the old specific mocked behavior if forced, but better to stick to real logic.
+            // For now, let's show the error but NOT navigate.
+            toast.error("Gagal mengecek status pembayaran. Pastikan server berjalan/terhubung.");
+        } finally {
             setIsChecking(false);
-            navigate('/payment-success', {
-                state: { orderId, amount, paymentMethod: currentStore.name, name, email, items: location.state?.items || [] }
-            });
-        }, 2000);
+        }
     };
 
     const handleCancelPayment = () => {
         setShowCancelModal(false);
-        navigate('/payment', { replace: true });
+        navigate('/payment', {
+            replace: true,
+            state: location.state
+        });
     };
 
     return (
@@ -150,13 +207,17 @@ const MinimarketPayment = () => {
 
                                 <div className="py-6 w-full flex flex-col items-center">
                                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.3em] mb-4">Barcode Transaksi</p>
-                                    <div className="max-w-xs w-full p-4 bg-white border border-gray-100 rounded-2xl shadow-inner">
-                                        <img
-                                            src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/UPC-A-barcode.svg/640px-UPC-A-barcode.svg.png"
-                                            alt="Barcode"
-                                            className="w-full h-16 object-contain opacity-80 filter grayscale grayscale-100"
+                                    <div className="max-w-xs w-full p-4 bg-white border border-gray-100 rounded-2xl shadow-inner flex flex-col items-center justify-center">
+                                        <Barcode
+                                            value={paymentCode}
+                                            format="CODE128"
+                                            width={2}
+                                            height={70}
+                                            displayValue={false}
+                                            background="transparent"
+                                            lineColor="#000000"
                                         />
-                                        <p className="text-[10px] text-gray-400 mt-2 font-mono tracking-widest">{paymentCode}</p>
+                                        <p className="text-[10px] text-gray-400 mt-3 font-mono tracking-widest">{paymentCode}</p>
                                     </div>
                                 </div>
                             </div>

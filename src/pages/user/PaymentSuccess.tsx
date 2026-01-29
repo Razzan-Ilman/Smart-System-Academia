@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle2, Copy, Download, Home } from 'lucide-react';
 
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const PaymentSuccess = () => {
+  const navigate = useNavigate();
   const location = useLocation();
   const [copied, setCopied] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
@@ -147,7 +148,7 @@ const PaymentSuccess = () => {
               </button>
 
               <button
-                onClick={() => window.location.href = '/'}
+                onClick={() => navigate('/')}
                 className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
               >
                 <Home className="w-5 h-5" />
