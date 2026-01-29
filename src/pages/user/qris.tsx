@@ -161,27 +161,6 @@ const QRISPayment = () => {
     } catch (error: any) {
       const errorData = error.response?.data;
 
-      if (errorData?.message === 'Trx already confirmed') {
-        // ⬇️ ANGAP INI SUCCESS
-        setPaymentStatus('success');
-        toast.success('Pembayaran sudah terkonfirmasi sebelumnya');
-
-        navigate('/payment-success', {
-          state: {
-            ...location.state,
-            orderId: orderNumber,
-            amount: totalAmount,
-            email: buyerEmail,
-            name: buyerName,
-            phone: buyerPhone,
-            items: stateData.items || [],
-            transactionData
-          }
-        });
-
-        return;
-      }
-
       console.error('Error confirming payment:', errorData || error.message);
       toast.error(
         errorData?.message ||
