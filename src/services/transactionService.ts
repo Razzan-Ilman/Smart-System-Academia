@@ -21,28 +21,31 @@ export interface Transaction {
   email: string;
   phone_number: string;
   payment_type: string;
-  product_id: string;
   status: string;
-  created_at: string;
-  updated_at: string;
+
+  // ✅ TAMBAHKAN
+  product_name?: string;
+
+  created_at?: string;
+  updated_at?: string;
   gross_amount?: number;
   price?: number;
-  [key: string]: any; // Allow indexing for safe access during debug
+  [key: string]: any;
 }
+
 
 export interface TransactionHistoryResponse {
   code: number;
   message: string;
-  data: {
-    transactions: Transaction[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
+  data: Transaction[];
+  meta: {
+    page: number;
+    limit: number;
+    totalPage: number;
+    totalData: number;
   };
 }
+
 
 /* =========================
    SERVICE
@@ -85,10 +88,6 @@ export const transactionService = {
     }
   },
 
-  /**
-   * ✅ CHECK PAYMENT STATUS
-   * Endpoint: GET /transaksi/check/:trxId
-   */
   checkPayment: async (trxId: string) => {
     try {
       const response = await axiosInstance.get(`/transaksi/check/${trxId}`);
@@ -99,10 +98,6 @@ export const transactionService = {
     }
   },
 
-  /**
-   * ✅ CONFIRM PAYMENT (Admin only)
-   * Endpoint: PUT /transaksi/:id/confirm-payment
-   */
   confirmPayment: async (id: string, originalReferenceNo: string) => {
     try {
       const response = await axiosInstance.put(`/transaksi/${id}/confirm-payment`, {

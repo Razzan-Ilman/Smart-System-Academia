@@ -78,22 +78,16 @@ export function ListTransaksi() {
         filterStatus === "All" ? "" : filterStatus
       );
 
-      // Robust data extraction
-      let txList: Transaction[] = [];
-      if (response?.data?.transactions && Array.isArray(response.data.transactions)) {
-        txList = response.data.transactions;
-      } else if (response?.data && Array.isArray(response.data)) {
-        txList = response.data;
-      } else if (Array.isArray(response)) {
-        txList = response as any;
-      }
+      const txList: Transaction[] = Array.isArray(response?.data)
+        ? response.data
+        : [];
 
       setTransactions(txList);
 
-      // Extract pagination properly
-      const pagination = response?.data?.pagination || (response as any)?.pagination;
-      setTotalPages(pagination?.totalPages || 1);
-      setTotalItems(pagination?.total || txList.length);
+      // ✅ PAGINATION FROM meta
+      setCurrentPage(response?.meta?.page || 1);
+      setTotalPages(response?.meta?.totalPage || 1);
+      setTotalItems(response?.meta?.totalData || txList.length);
 
     } catch (err: any) {
       console.error("❌ Error fetching transactions:", err);
@@ -103,6 +97,7 @@ export function ListTransaksi() {
       setLoading(false);
     }
   }, [currentPage, search, filterMethod, filterStatus]);
+
 
   useEffect(() => {
     fetchTransactions();
@@ -211,6 +206,7 @@ export function ListTransaksi() {
                   <th className="py-4 px-6 w-16 text-center">No</th>
                   <th className="py-4 px-4 w-32">TRX ID</th>
                   <th className="py-4 px-4">Nama Customer</th>
+                  <th className="py-4 px-4">Nama Produk</th>
                   <th className="py-4 px-4 text-right">Total Transaksi</th>
                   <th className="py-4 px-4 text-center">Metode</th>
                   <th className="py-4 px-4 text-center">Status</th>
@@ -248,6 +244,12 @@ export function ListTransaksi() {
                         <td className="py-4 px-4">
                           <div className="font-medium text-gray-800">{trx.name}</div>
                           <div className="text-xs text-gray-500 truncate max-w-[150px]">{trx.email}</div>
+                        </td>
+                        {/* ✅ NAMA PRODUK */}
+                        <td className="py-4 px-4">
+                          <div className="font-medium text-gray-700">
+                            {trx.product_name || "-"}
+                          </div>
                         </td>
                         <td className="py-4 px-4 text-right font-semibold text-gray-700">
                           {formatRupiah(Number(
