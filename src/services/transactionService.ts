@@ -130,6 +130,23 @@ export const transactionService = {
   },
 
   /**
+   * ✅ CANCEL EXPIRED TRANSACTIONS
+   * Endpoint: POST /transaksi/cancel-expired
+   * Auto-cancel all pending transactions that are older than specified hours
+   */
+  cancelExpiredTransactions: async (hoursThreshold = 24) => {
+    try {
+      const response = await axiosInstance.post('/transaksi/cancel-expired', {
+        hours: hoursThreshold
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("❌ Service Error - cancelExpiredTransactions:", error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
    * ✅ GET DASHBOARD STATS
    * Aggregates data from /transaksi/history into category-based stats
    */
@@ -179,8 +196,13 @@ export const transactionService = {
    EXPORTS (CLEAN)
 ========================= */
 
+// ⚠️ IMPORTANT: Do NOT confuse these functions:
+// - checkPaymentStatus: READ ONLY - Check payment status WITHOUT modifying
+// - confirmTransaction: WRITE - Manually confirm a payment (admin only)
+
 export const createTransaction = transactionService.create;
 export const checkPaymentStatus = transactionService.checkPayment;
 export const confirmTransaction = transactionService.confirmPayment;
 export const getTransactionHistory = transactionService.getHistory;
 export const deleteTransaction = transactionService.delete;
+export const cancelExpiredTransactions = transactionService.cancelExpiredTransactions;

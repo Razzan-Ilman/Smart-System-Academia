@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   MenuOutlined,
-  EditOutlined,
+  DeleteOutlined,
   SearchOutlined,
   UnorderedListOutlined,
   LoadingOutlined,
@@ -10,7 +10,9 @@ import {
 import { toast } from "sonner";
 import {
   getTransactionHistory,
-  confirmTransaction,
+  checkPaymentStatus,
+  cancelExpiredTransactions,
+  deleteTransaction,
   type Transaction
 } from "../../services/transactionService";
 import { formatRupiah } from "../../utils/transactionUtils";
@@ -18,22 +20,18 @@ import Pagination from "../../components/admin/Pagination";
 
 const ITEMS_PER_PAGE = 10;
 
-// Helper to format Status (Updated with Auto-Fail Logic)
-const normalizeStatus = (status?: string, createdAt?: string) => {
+// Helper to format Status from backend (display only)
+const normalizeStatus = (status?: string) => {
   if (!status) return "Pending";
   const s = status.toLowerCase();
 
+  // Map backend status to display format - NO MODIFICATION, JUST DISPLAY
   if (["success", "paid", "settlement"].includes(s)) return "Success";
-  if (["failed", "expire", "cancel", "cancelled"].includes(s)) return "Failed";
+  if (["failed", "expire", "expired", "cancel", "cancelled"].includes(s)) return "Failed";
+  if (["pending", "waiting", "unpaid"].includes(s)) return "Pending";
 
-  if (s === "pending" && createdAt) {
-    const createdTime = new Date(createdAt).getTime();
-    const now = new Date().getTime();
-    const diffHours = (now - createdTime) / (1000 * 60 * 60);
-    if (diffHours > 24) return "Failed"; // Auto-fail after 24 hours
-  }
-
-  return "Pending";
+  // Return original if unknown
+  return status.charAt(0).toUpperCase() + status.slice(1);
 };
 
 export function ListTransaksi() {
@@ -44,6 +42,10 @@ export function ListTransaksi() {
   const [showFilter, setShowFilter] = useState(false); // Original state
   const [filterStatus, setFilterStatus] = useState<string>("All");
   const [filterMethod, setFilterMethod] = useState<string>("All");
+  const [isCanceling, setIsCanceling] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -105,32 +107,82 @@ export function ListTransaksi() {
     if (!trxId) return;
     setCheckingId(trxId);
     try {
-      // Use confirmTransaction with 'ADMIN-SYNC' ref to force status check
-      const result = await confirmTransaction(trxId, "ADMIN-SYNC");
+      // ✅ FIXED: Use checkPaymentStatus to READ status without modifying it
+      const result = await checkPaymentStatus(trxId);
       const status = result?.data?.status || result?.status;
 
+      console.log('💡 Check Status Result:', { trxId, status, result });
+
+      // Display status feedback
       if (['paid', 'success', 'settlement'].includes((status || '').toLowerCase())) {
-        toast.success(`Status updated: ${status}`);
-        fetchTransactions();
-      } else if (status) {
-        toast.info(`Status saat ini: ${status}`);
-        // Still refresh to show update if any
-        fetchTransactions();
+        toast.success(`Status: ${status} ✅`);
+      } else if (['pending', 'waiting', 'unpaid'].includes((status || '').toLowerCase())) {
+        toast.info(`Status: ${status} - Menunggu pembayaran`);
+      } else if (['failed', 'expired', 'cancel', 'cancelled'].includes((status || '').toLowerCase())) {
+        toast.warning(`Status: ${status} ❌`);
       } else {
-        toast.warning("Status tidak berubah / belum dibayar");
-      }
-    } catch (error: any) {
-      const errorData = error.response?.data;
-      if (errorData?.message === 'Trx already confirmed') {
-        toast.success("Transaksi sudah dikonfirmasi (Success)");
-        fetchTransactions();
-        return;
+        toast.info(`Status: ${status || 'Unknown'}`);
       }
 
-      console.error("Check status failed:", error);
+      // ✅ Only refresh list after successful status check
+      await fetchTransactions();
+    } catch (error: any) {
+      console.error("❌ Check status failed:", error);
+      const errorData = error.response?.data;
       toast.error(errorData?.message || "Gagal mengecek status pembayaran");
+      // ❌ Don't refresh on error
     } finally {
       setCheckingId(null);
+    }
+  };
+
+  // ✅ Auto-cancel expired transactions (manual trigger)
+  const handleCancelExpired = async () => {
+    if (!confirm('Batalkan semua transaksi pending yang sudah lebih dari 24 jam?')) return;
+
+    setIsCanceling(true);
+    try {
+      const result = await cancelExpiredTransactions(24); // 24 hours threshold
+      const canceledCount = result?.data?.canceled_count || result?.canceled_count || 0;
+
+      if (canceledCount > 0) {
+        toast.success(`✅ ${canceledCount} transaksi expired berhasil dibatalkan`);
+      } else {
+        toast.info('Tidak ada transaksi expired yang perlu dibatalkan');
+      }
+
+      await fetchTransactions(); // Refresh list
+    } catch (error: any) {
+      console.error('❌ Failed to cancel expired transactions:', error);
+      toast.error(error.response?.data?.message || 'Gagal membatalkan transaksi expired');
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
+  // 🗑️ Delete transaction (for cleanup of incorrect data)
+  const handleDeleteClick = (transaction: Transaction) => {
+    setTransactionToDelete(transaction);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!transactionToDelete) return;
+
+    const txId = transactionToDelete.id || transactionToDelete.trx_id;
+    setDeletingId(String(txId));
+
+    try {
+      await deleteTransaction(txId);
+      toast.success(`✅ Transaksi ${transactionToDelete.trx_id} berhasil dihapus`);
+      await fetchTransactions(); // Refresh list
+      setShowDeleteModal(false);
+      setTransactionToDelete(null);
+    } catch (error: any) {
+      console.error('❌ Failed to delete transaction:', error);
+      toast.error(error.response?.data?.message || 'Gagal menghapus transaksi');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -163,6 +215,29 @@ export function ListTransaksi() {
               className="px-6 py-2 bg-white border border-gray-200 rounded-xl flex items-center gap-2 font-semibold text-gray-700 hover:bg-gray-50 shadow-sm"
             >
               <MenuOutlined /> Filter
+            </button>
+
+            {/* Auto-Cancel Expired Button */}
+            <button
+              onClick={handleCancelExpired}
+              disabled={isCanceling}
+              className={`px-4 py-2 border rounded-xl flex items-center gap-2 font-semibold shadow-sm transition-all ${isCanceling
+                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
+                }`}
+              title="Batalkan semua transaksi pending > 24 jam"
+            >
+              {isCanceling ? (
+                <>
+                  <LoadingOutlined className="animate-spin" />
+                  Canceling...
+                </>
+              ) : (
+                <>
+                  <SyncOutlined />
+                  Auto-Cancel
+                </>
+              )}
             </button>
 
             <div className="relative flex-1">
@@ -243,7 +318,8 @@ export function ListTransaksi() {
                   </tr>
                 ) : filteredTransactions.length > 0 ? (
                   filteredTransactions.map((trx, index) => {
-                    const statusNormalized = normalizeStatus(trx.status, trx.created_at);
+                    // ✅ Status from backend only, no client-side modification
+                    const statusNormalized = normalizeStatus(trx.status);
                     const statusColor =
                       statusNormalized === "Success"
                         ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
@@ -299,8 +375,21 @@ export function ListTransaksi() {
                               </button>
                             )}
 
-                            <button className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-full transition">
-                              <EditOutlined />
+                            {/* Delete Button */}
+                            <button
+                              onClick={() => handleDeleteClick(trx)}
+                              disabled={deletingId === String(trx.id || trx.trx_id)}
+                              className={`p-2 rounded-full transition ${deletingId === String(trx.id || trx.trx_id)
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'text-red-500 hover:bg-red-50 hover:text-red-600'
+                                }`}
+                              title="Hapus Transaksi"
+                            >
+                              {deletingId === String(trx.id || trx.trx_id) ? (
+                                <LoadingOutlined />
+                              ) : (
+                                <DeleteOutlined />
+                              )}
                             </button>
                           </div>
                         </td>
@@ -334,6 +423,55 @@ export function ListTransaksi() {
           />
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && transactionToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <DeleteOutlined className="text-3xl text-red-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Hapus Transaksi?</h3>
+              <p className="text-gray-600 mb-2">
+                Apakah Anda yakin ingin menghapus transaksi ini?
+              </p>
+              <div className="bg-gray-50 p-4 rounded-xl mb-6 text-left">
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold">TRX ID:</span> {transactionToDelete.trx_id}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold">Nama:</span> {transactionToDelete.name}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold">Email:</span> {transactionToDelete.email}
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setTransactionToDelete(null);
+                  }}
+                  className="flex-1 py-3 rounded-xl font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={deletingId !== null}
+                  className={`flex-1 py-3 rounded-xl font-semibold transition-all ${deletingId !== null
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-red-600 text-white hover:bg-red-700'
+                    }`}
+                >
+                  {deletingId !== null ? 'Menghapus...' : 'Ya, Hapus'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
