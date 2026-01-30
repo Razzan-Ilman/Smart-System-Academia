@@ -1,18 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   MenuOutlined,
-  DeleteOutlined,
   SearchOutlined,
   UnorderedListOutlined,
   LoadingOutlined,
-  SyncOutlined,
 } from "@ant-design/icons";
-import { toast } from "sonner";
 import {
   getTransactionHistory,
-  checkPaymentStatus,
-  cancelExpiredTransactions,
-  deleteTransaction,
   type Transaction
 } from "../../services/transactionService";
 import { formatRupiah } from "../../utils/transactionUtils";
@@ -34,18 +28,36 @@ const normalizeStatus = (status?: string) => {
   return status.charAt(0).toUpperCase() + status.slice(1);
 };
 
+// Helper to format Payment Method display
+const formatPaymentMethod = (method?: string) => {
+  if (!method) return "-";
+  const m = method.toLowerCase();
+
+  // Map payment methods to display format
+  if (m === "qris") return "QRIS";
+  if (m === "va" || m === "virtual_account") return "Virtual Account";
+  if (m === "ewallet" || m === "e-wallet") return "E-Wallet";
+  if (m === "indomaret") return "Indomaret";
+  if (m === "alfamart") return "Alfamart";
+  if (m.includes("bca")) return "BCA Virtual Account";
+  if (m.includes("mandiri")) return "Mandiri Virtual Account";
+  if (m.includes("bri")) return "BRI Virtual Account";
+  if (m.includes("bni")) return "BNI Virtual Account";
+  if (m.includes("permata")) return "Permata Virtual Account";
+  if (m.includes("bsi")) return "BSI Virtual Account";
+  if (m.includes("cimb")) return "CIMB Niaga Virtual Account";
+
+  // Return capitalized original if not recognized
+  return method.charAt(0).toUpperCase() + method.slice(1);
+};
+
 export function ListTransaksi() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [checkingId, setCheckingId] = useState<string | null>(null);
-  const [showFilter, setShowFilter] = useState(false); // Original state
+  const [showFilter, setShowFilter] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("All");
   const [filterMethod, setFilterMethod] = useState<string>("All");
-  const [isCanceling, setIsCanceling] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -103,88 +115,7 @@ export function ListTransaksi() {
 
 
 
-  const handleCheckStatus = async (trxId: string) => {
-    if (!trxId) return;
-    setCheckingId(trxId);
-    try {
-      // ✅ FIXED: Use checkPaymentStatus to READ status without modifying it
-      const result = await checkPaymentStatus(trxId);
-      const status = result?.data?.status || result?.status;
 
-      console.log('💡 Check Status Result:', { trxId, status, result });
-
-      // Display status feedback
-      if (['paid', 'success', 'settlement'].includes((status || '').toLowerCase())) {
-        toast.success(`Status: ${status} ✅`);
-      } else if (['pending', 'waiting', 'unpaid'].includes((status || '').toLowerCase())) {
-        toast.info(`Status: ${status} - Menunggu pembayaran`);
-      } else if (['failed', 'expired', 'cancel', 'cancelled'].includes((status || '').toLowerCase())) {
-        toast.warning(`Status: ${status} ❌`);
-      } else {
-        toast.info(`Status: ${status || 'Unknown'}`);
-      }
-
-      // ✅ Only refresh list after successful status check
-      await fetchTransactions();
-    } catch (error: any) {
-      console.error("❌ Check status failed:", error);
-      const errorData = error.response?.data;
-      toast.error(errorData?.message || "Gagal mengecek status pembayaran");
-      // ❌ Don't refresh on error
-    } finally {
-      setCheckingId(null);
-    }
-  };
-
-  // ✅ Auto-cancel expired transactions (manual trigger)
-  const handleCancelExpired = async () => {
-    if (!confirm('Batalkan semua transaksi pending yang sudah lebih dari 24 jam?')) return;
-
-    setIsCanceling(true);
-    try {
-      const result = await cancelExpiredTransactions(24); // 24 hours threshold
-      const canceledCount = result?.data?.canceled_count || result?.canceled_count || 0;
-
-      if (canceledCount > 0) {
-        toast.success(`✅ ${canceledCount} transaksi expired berhasil dibatalkan`);
-      } else {
-        toast.info('Tidak ada transaksi expired yang perlu dibatalkan');
-      }
-
-      await fetchTransactions(); // Refresh list
-    } catch (error: any) {
-      console.error('❌ Failed to cancel expired transactions:', error);
-      toast.error(error.response?.data?.message || 'Gagal membatalkan transaksi expired');
-    } finally {
-      setIsCanceling(false);
-    }
-  };
-
-  // 🗑️ Delete transaction (for cleanup of incorrect data)
-  const handleDeleteClick = (transaction: Transaction) => {
-    setTransactionToDelete(transaction);
-    setShowDeleteModal(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!transactionToDelete) return;
-
-    const txId = transactionToDelete.id || transactionToDelete.trx_id;
-    setDeletingId(String(txId));
-
-    try {
-      await deleteTransaction(txId);
-      toast.success(`✅ Transaksi ${transactionToDelete.trx_id} berhasil dihapus`);
-      await fetchTransactions(); // Refresh list
-      setShowDeleteModal(false);
-      setTransactionToDelete(null);
-    } catch (error: any) {
-      console.error('❌ Failed to delete transaction:', error);
-      toast.error(error.response?.data?.message || 'Gagal menghapus transaksi');
-    } finally {
-      setDeletingId(null);
-    }
-  };
 
   // Client-side filter removed in favor of server-side
   const filteredTransactions = transactions;
@@ -215,29 +146,6 @@ export function ListTransaksi() {
               className="px-6 py-2 bg-white border border-gray-200 rounded-xl flex items-center gap-2 font-semibold text-gray-700 hover:bg-gray-50 shadow-sm"
             >
               <MenuOutlined /> Filter
-            </button>
-
-            {/* Auto-Cancel Expired Button */}
-            <button
-              onClick={handleCancelExpired}
-              disabled={isCanceling}
-              className={`px-4 py-2 border rounded-xl flex items-center gap-2 font-semibold shadow-sm transition-all ${isCanceling
-                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
-                }`}
-              title="Batalkan semua transaksi pending > 24 jam"
-            >
-              {isCanceling ? (
-                <>
-                  <LoadingOutlined className="animate-spin" />
-                  Canceling...
-                </>
-              ) : (
-                <>
-                  <SyncOutlined />
-                  Auto-Cancel
-                </>
-              )}
             </button>
 
             <div className="relative flex-1">
@@ -304,8 +212,8 @@ export function ListTransaksi() {
                   <th className="py-4 px-4 w-32">TRX ID</th>
                   <th className="py-4 px-4">Nama Customer</th>
                   <th className="py-4 px-4 text-right">Total Transaksi</th>
+                  <th className="py-4 px-4 text-center">Metode</th>
                   <th className="py-4 px-4 text-center">Status</th>
-                  <th className="py-4 px-4 text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -353,6 +261,16 @@ export function ListTransaksi() {
                           ))}
                         </td>
                         <td className="py-4 px-4 text-center">
+                          <span className="text-sm text-gray-700 font-medium">
+                            {formatPaymentMethod(
+                              trx.payment_type ||
+                              trx.payment_method ||
+                              (trx as any).PaymentMethod ||
+                              (trx as any).payment
+                            )}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-bold inline-block min-w-[80px] ${statusColor}`}
                           >
@@ -361,44 +279,12 @@ export function ListTransaksi() {
                                 statusNormalized === "Failed" ? "Gagal" : statusNormalized}
                           </span>
                         </td>
-                        <td className="py-4 px-4 text-center">
-                          <div className="flex justify-center gap-2">
-                            {/* Sync Button (Only for Pending) */}
-                            {statusNormalized === "Pending" && (
-                              <button
-                                onClick={() => handleCheckStatus(trx.trx_id || String(trx.id))}
-                                disabled={checkingId === (trx.trx_id || String(trx.id))}
-                                className={`p-2 rounded-full transition ${checkingId === (trx.trx_id || String(trx.id)) ? "bg-gray-100 text-gray-400" : "text-green-500 hover:bg-green-50 hover:text-green-600"}`}
-                                title="Cek Status Pembayaran (Sync)"
-                              >
-                                {checkingId === (trx.trx_id || String(trx.id)) ? <LoadingOutlined /> : <SyncOutlined />}
-                              </button>
-                            )}
-
-                            {/* Delete Button */}
-                            <button
-                              onClick={() => handleDeleteClick(trx)}
-                              disabled={deletingId === String(trx.id || trx.trx_id)}
-                              className={`p-2 rounded-full transition ${deletingId === String(trx.id || trx.trx_id)
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                : 'text-red-500 hover:bg-red-50 hover:text-red-600'
-                                }`}
-                              title="Hapus Transaksi"
-                            >
-                              {deletingId === String(trx.id || trx.trx_id) ? (
-                                <LoadingOutlined />
-                              ) : (
-                                <DeleteOutlined />
-                              )}
-                            </button>
-                          </div>
-                        </td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan={7} className="p-16 text-center text-gray-400 font-medium">
+                    <td colSpan={6} className="p-16 text-center text-gray-400 font-medium">
                       {search || filterStatus !== "All" || filterMethod !== "All"
                         ? "Tidak ada transaksi yang sesuai dengan filter"
                         : "Belum ada data transaksi"}
@@ -424,54 +310,7 @@ export function ListTransaksi() {
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && transactionToDelete && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <DeleteOutlined className="text-3xl text-red-600" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Hapus Transaksi?</h3>
-              <p className="text-gray-600 mb-2">
-                Apakah Anda yakin ingin menghapus transaksi ini?
-              </p>
-              <div className="bg-gray-50 p-4 rounded-xl mb-6 text-left">
-                <p className="text-sm text-gray-600">
-                  <span className="font-semibold">TRX ID:</span> {transactionToDelete.trx_id}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-semibold">Nama:</span> {transactionToDelete.name}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-semibold">Email:</span> {transactionToDelete.email}
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setTransactionToDelete(null);
-                  }}
-                  className="flex-1 py-3 rounded-xl font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={handleDeleteConfirm}
-                  disabled={deletingId !== null}
-                  className={`flex-1 py-3 rounded-xl font-semibold transition-all ${deletingId !== null
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-red-600 text-white hover:bg-red-700'
-                    }`}
-                >
-                  {deletingId !== null ? 'Menghapus...' : 'Ya, Hapus'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

@@ -120,15 +120,17 @@ const QRISPayment = () => {
     }
   };
 
-  // ✅ UPDATED: Check Payment Status menggunakan endpoint baru
-  const checkPaymentStatusAPI = async () => {
+  // ✅ AUTO-POLLING: Cek status otomatis dari backend (yang diupdate via webhook)
+  const checkPaymentStatusAPI = async (isAutoCheck = false) => {
     if (isChecking) return;
 
     setIsChecking(true);
-    setPaymentStatus('checking');
+    if (!isAutoCheck) {
+      setPaymentStatus('checking');
+    }
 
     try {
-      console.log('📤 Checking payment status for trxId:', orderNumber);
+      console.log('📤 Auto-checking payment status for trxId:', orderNumber);
 
       // ✅ Call API endpoint yang benar
       const response = await axios.get(
@@ -136,12 +138,11 @@ const QRISPayment = () => {
       );
 
       console.log('📥 Payment Status Response:', response.data);
-      console.log('🔍 Full Response:', JSON.stringify(response.data, null, 2));
 
       const result = response.data;
 
       // ✅ Normalisasi status dari berbagai kemungkinan field
-      const rawStatus = 
+      const rawStatus =
         result?.data?.payment_status ||
         result?.data?.status ||
         result?.payment_status ||
@@ -151,13 +152,12 @@ const QRISPayment = () => {
       const status = String(rawStatus).toLowerCase();
 
       console.log('🔍 Payment Status:', status);
-      console.log('🔍 Raw Status:', rawStatus);
 
-      // ✅ Cek status pembayaran
+      // ✅ Cek status pembayaran (status dari webhook payment gateway)
       if (status === 'paid' || status === 'success' || status === 'settlement' || status === 'completed') {
         setPaymentStatus('success');
         toast.success('Pembayaran terkonfirmasi! 🎉');
-        
+
         setTimeout(() => {
           navigate('/payment-success', {
             replace: true,
@@ -173,16 +173,12 @@ const QRISPayment = () => {
               productLink: stateData.productLink
             }
           });
-        }, 2000);
-      } else if (status === 'pending' || status === 'waiting' || status === 'unpaid' || status === '') {
-        // Status masih pending
-        toast.info('Pembayaran belum terdeteksi. Pastikan Anda sudah scan QRIS dan menyelesaikan pembayaran.');
-        setPaymentStatus('pending');
+        }, 1500);
       } else if (status === 'failed' || status === 'expired' || status === 'cancelled' || status === 'cancel') {
-        // Status gagal/expired
+        // Status gagal/expired dari webhook
+        setPaymentStatus('failed');
         toast.error('Pembayaran gagal atau kadaluarsa');
-        setPaymentStatus('pending');
-        
+
         setTimeout(() => {
           navigate('/payment-failed', {
             replace: true,
@@ -197,27 +193,42 @@ const QRISPayment = () => {
             }
           });
         }, 2000);
-      } else {
-        // Status tidak dikenali
-        console.warn('⚠️ Unknown payment status:', rawStatus);
-        toast.warning(`Status pembayaran: ${rawStatus}`);
-        setPaymentStatus('pending');
       }
+      // Jika pending, tidak perlu toast - auto-polling akan terus jalan
     } catch (error: any) {
       console.error('❌ Error checking payment status:', error);
-      
-      const errorMessage = 
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        error.message ||
-        'Gagal memeriksa status pembayaran';
 
-      toast.error(errorMessage);
-      setPaymentStatus('pending');
+      // Jangan toast error saat auto-check, biar tidak spam
+      if (!isAutoCheck) {
+        const errorMessage =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          'Gagal memeriksa status pembayaran';
+        toast.error(errorMessage);
+      }
     } finally {
       setIsChecking(false);
     }
   };
+
+  // ✅ AUTO-POLLING: Cek status setiap 5 detik
+  useEffect(() => {
+    // Initial check
+    checkPaymentStatusAPI(true);
+
+    // Setup interval untuk auto-polling
+    const pollingInterval = setInterval(() => {
+      if (paymentStatus !== 'success' && paymentStatus !== 'failed') {
+        checkPaymentStatusAPI(true);
+      }
+    }, 5000); // 5 detik
+
+    // Cleanup saat component unmount atau payment selesai
+    return () => {
+      clearInterval(pollingInterval);
+    };
+  }, [paymentStatus, orderNumber]);
 
   const handleCancelPayment = () => {
     setShowCancelModal(false);
@@ -394,41 +405,31 @@ const QRISPayment = () => {
               </ol>
             </div>
 
-            {/* Check Payment Button */}
-            <button
-              onClick={checkPaymentStatusAPI}
-              disabled={isChecking || paymentStatus === 'success'}
-              className={`w-full max-w-md py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 mb-4 ${isChecking
-                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                : paymentStatus === 'success'
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-xl hover:shadow-2xl'
-                }`}
-            >
-              {isChecking ? (
-                <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  Mengecek Pembayaran...
-                </>
-              ) : paymentStatus === 'success' ? (
-                <>
-                  <CheckCircle2 className="w-5 h-5" />
-                  Pembayaran Berhasil!
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-5 h-5" />
-                  Cek Status Pembayaran
-                </>
-              )}
-            </button>
+            {/* Auto-Polling Status Indicator */}
+            <div className="w-full max-w-md mb-4">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
+                <div className="flex items-center justify-center gap-3 mb-3">
+                  <div className="relative">
+                    <RefreshCw className={`w-5 h-5 text-blue-600 ${paymentStatus === 'checking' || isChecking ? 'animate-spin' : ''}`} />
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  </div>
+                  <span className="font-bold text-gray-800">Menunggu Konfirmasi Pembayaran</span>
+                </div>
+                <p className="text-center text-sm text-gray-600 leading-relaxed">
+                  Sistem otomatis mengecek status pembayaran dari payment gateway.
+                  <span className="block mt-1 text-xs text-blue-600 font-medium">
+                    ⚡ Real-time detection via webhook
+                  </span>
+                </p>
+              </div>
+            </div>
 
-            {/* Manual check info */}
+            {/* Manual check info - Hilangkan button manual */}
             {paymentStatus === 'pending' && !isChecking && (
               <div className="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-100 w-full max-w-md">
                 <p className="flex items-center justify-center gap-2 text-sm text-amber-700">
                   <AlertCircle className="w-4 h-4" />
-                  Klik tombol di atas setelah Anda menyelesaikan pembayaran via QRIS.
+                  Pastikan Anda sudah menyelesaikan pembayaran via QRIS. Status akan otomatis terupdate.
                 </p>
               </div>
             )}

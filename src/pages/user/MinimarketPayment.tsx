@@ -92,9 +92,12 @@ const MinimarketPayment = () => {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const handleCheckStatus = async () => {
+    // ✅ AUTO-POLLING: Cek status otomatis dari backend (yang diupdate via webhook)
+    const handleCheckStatus = async (isAutoCheck = false) => {
         if (!orderId) {
-            toast.error("Order ID tidak ditemukan");
+            if (!isAutoCheck) {
+                toast.error("Order ID tidak ditemukan");
+            }
             return;
         }
 
@@ -103,9 +106,9 @@ const MinimarketPayment = () => {
             const statusResult = await checkPaymentStatus(orderId);
             const status = statusResult?.data?.status || statusResult?.status;
 
-            console.log("Check Status Result:", statusResult);
+            console.log("Auto-check Status Result:", statusResult);
 
-            if (status === 'settlement' || status === 'success' || status === 'paid') {
+            if (status === 'settlement' || status === 'success' || status === 'paid' || status === 'completed') {
                 toast.success("Pembayaran berhasil!");
                 navigate('/payment-success', {
                     state: {
@@ -118,28 +121,48 @@ const MinimarketPayment = () => {
                         productLink: location.state?.productLink
                     }
                 });
-            } else if (status === 'pending') {
-                toast.info("Pembayaran belum terdeteksi. Silakan coba lagi setelah membayar.", {
-                    description: "Pastikan Anda sudah menyelesaikan pembayaran di kasir."
-                });
-            } else if (status === 'expire' || status === 'cancel') {
+            } else if (status === 'expire' || status === 'cancel' || status === 'expired' || status === 'cancelled' || status === 'failed') {
                 toast.error("Pembayaran kadaluarsa atau dibatalkan.");
-            } else {
-                toast.warning(`Status pembayaran: ${status || 'Unknown'}`);
+                navigate('/payment-failed', {
+                    replace: true,
+                    state: {
+                        ...location.state,
+                        orderId,
+                        amount,
+                        email,
+                        name,
+                        reason: 'Pembayaran kadaluarsa atau dibatalkan'
+                    }
+                });
             }
+            // Jika pending, tidak perlu toast - auto-polling akan terus jalan
 
         } catch (error) {
             console.error("Failed to check status:", error);
-            // Fallback for demo purposes if backend isn't 100% ready or during dev
-            // toast.error("Gagal mengecek status pembayaran"); 
-
-            // OPTIONAL: Keep the old specific mocked behavior if forced, but better to stick to real logic.
-            // For now, let's show the error but NOT navigate.
-            toast.error("Gagal mengecek status pembayaran. Pastikan server berjalan/terhubung.");
+            // Jangan toast error saat auto-check
+            if (!isAutoCheck) {
+                toast.error("Gagal mengecek status pembayaran. Pastikan server berjalan/terhubung.");
+            }
         } finally {
             setIsChecking(false);
         }
     };
+
+    // ✅ AUTO-POLLING: Cek status setiap 5 detik
+    useEffect(() => {
+        // Initial check
+        handleCheckStatus(true);
+
+        // Setup interval untuk auto-polling
+        const pollingInterval = setInterval(() => {
+            handleCheckStatus(true);
+        }, 5000); // 5 detik
+
+        // Cleanup
+        return () => {
+            clearInterval(pollingInterval);
+        };
+    }, [orderId]);
 
     const handleCancelPayment = () => {
         setShowCancelModal(false);
@@ -310,18 +333,23 @@ const MinimarketPayment = () => {
                             </div>
                         </div>
 
-                        {/* Check Status Button */}
+                        {/* Auto-Polling Status Indicator */}
                         <div className="space-y-4">
-                            <button
-                                onClick={handleCheckStatus}
-                                disabled={isChecking}
-                                className={`w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-95 ${isChecking
-                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                                    : 'bg-gray-900 text-white hover:bg-black'
-                                    }`}
-                            >
-                                {isChecking ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Selesai Membayar'}
-                            </button>
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
+                                <div className="flex items-center justify-center gap-3 mb-3">
+                                    <div className="relative">
+                                        <RefreshCw className={`w-5 h-5 text-blue-600 ${isChecking ? 'animate-spin' : ''}`} />
+                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                    </div>
+                                    <span className="font-bold text-gray-800 text-sm">Menunggu Konfirmasi</span>
+                                </div>
+                                <p className="text-center text-xs text-gray-600 leading-relaxed">
+                                    Sistem otomatis mengecek pembayaran
+                                    <span className="block mt-1 text-xs text-blue-600 font-medium">
+                                        ⚡ Auto-detection setiap 5 detik
+                                    </span>
+                                </p>
+                            </div>
 
                             {/* Cancel Payment Button */}
                             <button

@@ -148,20 +148,40 @@ export const transactionService = {
 
   /**
    * ✅ GET DASHBOARD STATS
-   * Aggregates data from /transaksi/history into category-based stats
+   * ⚠️ TEMPORARY WORKAROUND: Fetch ALL transactions to calculate accurate stats
+   * 
+   * TODO (Backend): Create dedicated endpoint /dashboard/stats or /transaksi/stats
+   * that returns pre-aggregated data from database instead of client-side calculation.
+   * This will be much more efficient and scalable.
+   * 
+   * Current approach: Fetch with high limit (10000) to get all transactions
+   * Problem: Not scalable for large databases (>10k transactions)
    */
   getDashboardStats: async () => {
     try {
-      const response = await axiosInstance.get('/transaksi/history');
+      // ⚠️ CRITICAL FIX: Use high limit to fetch ALL transactions
+      // Without this, stats will only calculate from first 10 transactions (default pagination)
+      const response = await axiosInstance.get('/transaksi/history', {
+        params: {
+          page: 1,
+          limit: 10000, // High limit to ensure we get ALL transactions
+          // Backend should have /stats endpoint instead
+        }
+      });
+
       // Handle potentially nested data structures
       let transactions = [];
       if (Array.isArray(response.data)) {
         transactions = response.data;
       } else if (response.data?.data && Array.isArray(response.data.data)) {
         transactions = response.data.data;
+      } else if (response.data?.data?.transactions && Array.isArray(response.data.data.transactions)) {
+        transactions = response.data.data.transactions;
       } else if (response.data && Array.isArray(response.data.transactions)) {
         transactions = response.data.transactions;
       }
+
+      console.log('📊 Dashboard Stats - Total transactions fetched:', transactions.length);
 
       // Import utils inside function or ensure they are imported at top
       const {
@@ -172,15 +192,23 @@ export const transactionService = {
         groupByProduct
       } = await import('../utils/transactionUtils');
 
-      return {
+      const stats = {
         totalRevenue: calculateTotalRevenue(transactions),
         totalSales: calculateTotalSales(transactions),
         statsByStatus: groupByStatus(transactions),
         statsByPayment: groupByPaymentType(transactions),
         statsByProduct: groupByProduct(transactions)
       };
+
+      console.log('📊 Dashboard Stats calculated:', {
+        totalRevenue: stats.totalRevenue,
+        totalSales: stats.totalSales,
+        transactionsCount: transactions.length
+      });
+
+      return stats;
     } catch (error) {
-      console.error('Failed to get dashboard stats:', error);
+      console.error('❌ Failed to get dashboard stats:', error);
       return {
         totalRevenue: 0,
         totalSales: 0,
